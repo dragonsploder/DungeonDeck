@@ -3,9 +3,10 @@
         include "vcs.h"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Macros
-
-;bg_color = #$84
-
+bg_color = $84
+sprite_height = $09
+sprite_y = $80
+sprite = $11
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Variables segment
@@ -23,12 +24,19 @@ init
 	cld 		; clear decimal mode flag
         sei		; set interrupt disable flag
         ldx #$FF	
-        tsx		; set stack pointer to $FF
+        txs		; set stack pointer to $FF
+        
+        lda #0		; zero out zero page
+        ldx #$FF
+zero_zp
+	sta $0,X
+        dex
+        bne zero_zp
 	
 
 new_frame
-        lsr SWCHB	; test Game Reset switch
-        bcc init	; reset?
+        ;lsr SWCHB	; test Game Reset switch
+        ;bcc init	; reset?
         
         lda #2
         sta VBLANK	; turn on vblank
@@ -49,13 +57,34 @@ lvblank
       	lda #0
         sta VBLANK	; turn off VBLANK
         
+        
+        
         ldx #192	; count 192 scanlines
-        ldy #$B8	; load bg color
 lvscan
+	ldy #bg_color   ; load bg color
 	sty COLUBK	; set bg color
+        
+        txa
+        sec
+        sbc #sprite_y
+        cmp #sprite_height
+        
+        bcc insprite
+	lda #$00
+insprite
+	tay
+        lda icon_nine,y
+        ora icon_sword,y
         sta WSYNC	; wait for next scanline
-        dex
+        sta GRP0
+        
+        lda #$F
+        sta COLUP0
+        
+	dex
         bne lvscan
+
+
 
 	lda #2		
         sta VBLANK	; turn on VBLANK
@@ -66,10 +95,142 @@ lvover
         bne lvover
 
         jmp new_frame
+        
+        
+; icons
+icon_sword
+	.byte #$00
+	.byte #%01000000 
+        .byte #%01000000
+        .byte #%11100000
+        .byte #%01000000
+        .byte #%01000000
+        .byte #%01000000
+        .byte #%01000000
+        .byte #%00000000
+        
+; numbers
+icon_zero
+	.byte #$00
+	.byte #%00000111
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000111
+        .byte #%00000000
+        
+icon_one
+	.byte #$00
+	.byte #%00000100
+        .byte #%00000100
+        .byte #%00000100
+        .byte #%00000100
+        .byte #%00000100
+        .byte #%00000100
+        .byte #%00000100
+        .byte #%00000000
+        
+icon_two
+	.byte #$00
+	.byte #%00000111
+        .byte #%00000100
+        .byte #%00000100
+        .byte #%00000111
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000111
+        .byte #%00000000
+        
+icon_three
+	.byte #$00
+	.byte #%00000111
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000111
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000111
+        .byte #%00000000
+        
+icon_four
+	.byte #$00
+	.byte #%00000001
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000111
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000000
+        
+icon_five
+	.byte #$00
+	.byte #%00000111
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000111
+        .byte #%00000100
+        .byte #%00000100
+        .byte #%00000111
+        .byte #%00000000
+ 
+icon_six
+	.byte #$00
+	.byte #%00000111
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000111
+        .byte #%00000100
+        .byte #%00000100
+        .byte #%00000100
+        .byte #%00000000
 
+icon_seven
+	.byte #$00
+	.byte #%00000001
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000111
+        .byte #%00000000
+
+icon_eight
+	.byte #$00
+	.byte #%00000111
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000111
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000111
+        .byte #%00000000
+
+icon_nine
+	.byte #$00
+	.byte #%00000001
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000111
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000111
+        .byte #%00000000
+
+
+	org $FE00
+icon_number_list
+	.word icon_zero
+        .word icon_one
+        
+        
+        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Epilogue
 
-	org $fffc
+	org $FFFC
         .word init	; reset vector
         .word init	; BRK vector
