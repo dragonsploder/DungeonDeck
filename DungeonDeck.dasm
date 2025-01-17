@@ -1,0 +1,75 @@
+
+	processor 6502
+        include "vcs.h"
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Macros
+
+;bg_color = #$84
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Variables segment
+
+        seg.u variables
+	org $80
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Code segment
+
+	seg code
+        org $f000
+
+init
+	cld 		; clear decimal mode flag
+        sei		; set interrupt disable flag
+        ldx #$FF	
+        tsx		; set stack pointer to $FF
+	
+
+new_frame
+        lsr SWCHB	; test Game Reset switch
+        bcc init	; reset?
+        
+        lda #2
+        sta VBLANK	; turn on vblank
+        sta VSYNC	; turn on vsync
+        
+        sta WSYNC	; first scanline
+        sta WSYNC	; second scanline
+        sta WSYNC	; third scanline
+        lda #0
+        sta VSYNC	; turn off VSYNC
+        
+        ldx #37		; count 37 scanlines
+lvblank
+	sta WSYNC	
+        dex
+        bne lvblank
+        
+      	lda #0
+        sta VBLANK	; turn off VBLANK
+        
+        ldx #192	; count 192 scanlines
+        ldy #$B8	; load bg color
+lvscan
+	sty COLUBK	; set bg color
+        sta WSYNC	; wait for next scanline
+        dex
+        bne lvscan
+
+	lda #2		
+        sta VBLANK	; turn on VBLANK
+        ldx #30		; count 30 scanlines
+lvover
+	sta WSYNC	
+        dex
+        bne lvover
+
+        jmp new_frame
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Epilogue
+
+	org $fffc
+        .word init	; reset vector
+        .word init	; BRK vector
