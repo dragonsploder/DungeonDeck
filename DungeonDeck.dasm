@@ -4,15 +4,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Macros
 bg_color = $84
-sprite_height = $09
-sprite_y = $80
-sprite = $11
+sprite_height = $07
+sprite_y = $40
+sprite_x = $80
+sprite = $00
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Variables segment
 
         seg.u variables
 	org $80
+temp	byte
+temp2 	byte
+card1s	byte
+card1t	byte
+card1n  byte
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
@@ -33,6 +39,30 @@ zero_zp
         dex
         bne zero_zp
 	
+        
+        lda #sprite
+        sta card1s
+        
+        
+fill_cards
+	lda card1s
+        lsr
+        lsr
+        lsr
+        lsr
+        jsr mult7
+	sta card1t
+        
+        lda card1s
+        and #$0F
+        jsr mult7
+	sta card1n
+
+        ;and #$F0
+	;lda #$00
+        ;sta card1t
+        ;lda #$0e
+        ;sta card1n
 
 new_frame
         ;lsr SWCHB	; test Game Reset switch
@@ -48,7 +78,13 @@ new_frame
         lda #0
         sta VSYNC	; turn off VSYNC
         
-        ldx #37		; count 37 scanlines
+        lda #sprite_x
+        ldx #$0
+        jsr sethorizpos
+        sta WSYNC	; sync w/ scanline
+        sta HMOVE	; apply fine offsets
+        
+        ldx #35		; count 35 scanlines
 lvblank
 	sta WSYNC	
         dex
@@ -68,16 +104,24 @@ lvscan
         sec
         sbc #sprite_y
         cmp #sprite_height
-        
         bcc insprite
-	lda #$00
+        lda #$00
+	jmp outsprite
 insprite
-	tay
-        lda icon_nine,y
-        ora icon_sword,y
+	sta temp
+	adc card1t
+        tay
+        lda icon_types,y
+        sta temp2
+        lda temp
+        adc card1n
+        tay
+        lda temp2
+        ora icon_numbers,y
+outsprite:
         sta WSYNC	; wait for next scanline
         sta GRP0
-        
+
         lda #$F
         sta COLUP0
         
@@ -95,11 +139,46 @@ lvover
         bne lvover
 
         jmp new_frame
+
+
+; sethorizpos routine
+; A = X coordinate
+; X = player number (0 or 1)
+sethorizpos
+	sta WSYNC	; start a new line
+	sec		; set carry flag
+divideloop
+	sbc #15		; subtract 15
+	bcs divideloop	; branch until negative
+	eor #7		; calculate fine offset
+	asl
+	asl
+	asl
+	asl
+	sta RESP0,x	; fix coarse position
+	sta HMP0,x	; set fine offset
+	rts		; return to caller
+        
+; Calc sprite offset
+; A = Times to multiplly, will have results
+mult7
+	tax
+        lda #$00
+        cpx #$00
+        bne mult7_loop
+        rts
+mult7_loop
+	clc
+	adc #$07
+        dex
+        bne mult7_loop
+        rts
         
         
 ; icons
+
+icon_types
 icon_sword
-	.byte #$00
 	.byte #%01000000 
         .byte #%01000000
         .byte #%11100000
@@ -107,11 +186,28 @@ icon_sword
         .byte #%01000000
         .byte #%01000000
         .byte #%01000000
+icon_potion
+	.byte #%11100000 
+        .byte #%10100000
+        .byte #%10100000
+        .byte #%10100000
+        .byte #%11100000
+        .byte #%01000000
+        .byte #%01000000
+icon_sheild
+	.byte #%01000000 
         .byte #%00000000
+        .byte #%10100000
+        .byte #%10100000
+        .byte #%10100000
+        .byte #%00000000
+        .byte #%01000000
         
-; numbers
+        
+        
+        
+icon_numbers
 icon_zero
-	.byte #$00
 	.byte #%00000111
         .byte #%00000101
         .byte #%00000101
@@ -119,10 +215,7 @@ icon_zero
         .byte #%00000101
         .byte #%00000101
         .byte #%00000111
-        .byte #%00000000
-        
 icon_one
-	.byte #$00
 	.byte #%00000100
         .byte #%00000100
         .byte #%00000100
@@ -130,21 +223,15 @@ icon_one
         .byte #%00000100
         .byte #%00000100
         .byte #%00000100
-        .byte #%00000000
-        
 icon_two
-	.byte #$00
 	.byte #%00000111
         .byte #%00000100
         .byte #%00000100
         .byte #%00000111
         .byte #%00000001
         .byte #%00000001
-        .byte #%00000111
-        .byte #%00000000
-        
+        .byte #%00000111   
 icon_three
-	.byte #$00
 	.byte #%00000111
         .byte #%00000001
         .byte #%00000001
@@ -152,10 +239,7 @@ icon_three
         .byte #%00000001
         .byte #%00000001
         .byte #%00000111
-        .byte #%00000000
-        
 icon_four
-	.byte #$00
 	.byte #%00000001
         .byte #%00000001
         .byte #%00000001
@@ -163,10 +247,7 @@ icon_four
         .byte #%00000101
         .byte #%00000101
         .byte #%00000101
-        .byte #%00000000
-        
 icon_five
-	.byte #$00
 	.byte #%00000111
         .byte #%00000001
         .byte #%00000001
@@ -174,10 +255,7 @@ icon_five
         .byte #%00000100
         .byte #%00000100
         .byte #%00000111
-        .byte #%00000000
- 
 icon_six
-	.byte #$00
 	.byte #%00000111
         .byte #%00000101
         .byte #%00000101
@@ -185,10 +263,7 @@ icon_six
         .byte #%00000100
         .byte #%00000100
         .byte #%00000100
-        .byte #%00000000
-
 icon_seven
-	.byte #$00
 	.byte #%00000001
         .byte #%00000001
         .byte #%00000001
@@ -196,10 +271,7 @@ icon_seven
         .byte #%00000001
         .byte #%00000001
         .byte #%00000111
-        .byte #%00000000
-
 icon_eight
-	.byte #$00
 	.byte #%00000111
         .byte #%00000101
         .byte #%00000101
@@ -207,10 +279,7 @@ icon_eight
         .byte #%00000101
         .byte #%00000101
         .byte #%00000111
-        .byte #%00000000
-
 icon_nine
-	.byte #$00
 	.byte #%00000001
         .byte #%00000001
         .byte #%00000001
@@ -218,16 +287,7 @@ icon_nine
         .byte #%00000101
         .byte #%00000101
         .byte #%00000111
-        .byte #%00000000
 
-
-	org $FE00
-icon_number_list
-	.word icon_zero
-        .word icon_one
-        
-        
-        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Epilogue
 
