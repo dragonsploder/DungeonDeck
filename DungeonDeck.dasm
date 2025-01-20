@@ -8,19 +8,27 @@
 bg_color = $84
 sprite_height = $07
 sprite_y = $40
-sprite_x = $80
-sprite = $00
+sprite_x = $55
+sprite = $14
+cards_len = $08
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Variables segment
 
         seg.u variables
 	org $80
+        
 temp	byte
 temp2 	byte
-card1s	byte
-card1t	byte
-card1n  byte
+temp3 	byte
+
+
+cards	ds 8
+cardindxt ds 8
+cardindxn ds 8
+
+cardasprite ds 7
+cardbsprite ds 7
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
@@ -42,40 +50,43 @@ zero_zp
         bne zero_zp
 	
         
-        lda #sprite
-        sta card1s
+        lda #00
+        sta cards+0
+        lda #01
+        sta cards+1
+        lda #02
+        sta cards+2
+        lda #03
+        sta cards+3
+        lda #04
+        sta cards+4
+        lda #05
+        sta cards+5
+        lda #06
+        sta cards+6
+        lda #07
+        sta cards+7
+        jsr fill_cards
         
-        
-fill_cards
-	lda card1s
-        lsr
-        lsr
-        lsr
-        lsr
-        jsr mult7
-	sta card1t
-        
-        lda card1s
-        and #$0F
-        jsr mult7
-	sta card1n
 
-        ;and #$F0
-	;lda #$00
-        ;sta card1t
-        ;lda #$0e
-        ;sta card1n
 
 new_frame
-        ;lsr SWCHB	; test Game Reset switch
-        ;bcc init	; reset?
+        lsr SWCHB	; test Game Reset switch
+        bcc init	; reset?
         
         VERTICAL_SYNC
+        
         
         TIMER_SETUP 37
         
         lda #sprite_x
         ldx #$0
+        jsr sethorizpos
+        sta WSYNC	; sync w/ scanline
+        sta HMOVE	; apply fine offsets
+        
+        lda #70
+        ldx #$1
         jsr sethorizpos
         sta WSYNC	; sync w/ scanline
         sta HMOVE	; apply fine offsets
@@ -90,75 +101,70 @@ new_frame
         ldy #bg_color   ; load bg color
 	sty COLUBK	; set bg color
         
-        TIMER_SETUP 100
-        TIMER_WAIT
         
         
-        ldx #$07
-sprite_loop
-	dex
-
-	txa
-	sta temp
-        clc
-	adc card1t
-        tay
-        lda icon_types,y
-        sta temp2
-        lda temp
-        clc
-        adc card1n
-        tay
-        lda temp2
-        ora icon_numbers,y
-        sta WSYNC	; wait for next scanline
-        sta GRP0
-
-        lda #$F
-        sta COLUP0
+        TIMER_SETUP 30
         
-        cpx #$00
-        bne sprite_loop
-        
-
         lda #$00
-        sta WSYNC
-        sta GRP0
+        jsr fill_card_a
         
-        
-        TIMER_SETUP 84
         TIMER_WAIT
         
+	jsr print_card_a
         
-;        ldx #192	; count 192 scanlines
-;lvscan  
-;        txa
-;        sec
-;        sbc #sprite_y
-;        cmp #sprite_height
-;        bcc insprite
-;        lda #$00
-;	jmp outsprite
-;insprite
-;	sta temp
-;	adc card1t
-;       tay
-;       lda icon_types,y
-;        sta temp2
-;        lda temp
-;        adc card1n
-;        tay
-;        lda temp2
-;        ora icon_numbers,y
-;outsprite:
-;        sta WSYNC	; wait for next scanline
-;        sta GRP0
-;
-;        lda #$F
-;        sta COLUP0
-;        
-;	dex
-;        bne lvscan
+        TIMER_SETUP 15
+        
+        lda #$01
+        jsr fill_card_a
+        
+        lda #$02
+        jsr fill_card_b
+        
+        TIMER_WAIT
+        
+	jsr print_card_ab
+        
+        TIMER_SETUP 15
+        
+        lda #$03
+        jsr fill_card_a
+        
+        TIMER_WAIT
+        
+	jsr print_card_a
+        
+        TIMER_SETUP 30
+        
+        lda #$04
+        jsr fill_card_a
+        
+        TIMER_WAIT
+        
+	jsr print_card_a
+        
+        
+        TIMER_SETUP 15
+        
+        lda #$05
+        jsr fill_card_a
+        lda #$06
+        jsr fill_card_b
+        
+        TIMER_WAIT
+        
+	jsr print_card_ab
+        
+        TIMER_SETUP 15
+        
+        lda #$07
+        jsr fill_card_a
+        
+        TIMER_WAIT
+        
+        jsr print_card_a
+        
+        TIMER_SETUP 33
+        TIMER_WAIT
 
 	
 	lda #2		
@@ -170,9 +176,112 @@ sprite_loop
 
         jmp new_frame
 
+; fillcard
+; A = card index number
+fill_card_a
+	sta temp3
+        ldx #$07
+fill_card_a_loop
+	dex
 
+	txa
+	sta temp
+        clc
+        ldy temp3
+	adc cardindxt,y
+        tay
+        lda icon_types,y
+        sta temp2
+        lda temp
+        ldy temp3
+        clc
+        adc cardindxn,y
+        tay
+        lda temp2
+        ora icon_numbers,y
+        sta cardasprite,x
+        
+        cpx #$00
+        bne fill_card_a_loop
+        rts
+
+; fillcard
+; A = card index number
+fill_card_b
+	sta temp3
+        ldx #$07
+fill_card_b_loop
+	dex
+
+	txa
+	sta temp
+        clc
+        ldy temp3
+	adc cardindxt,y
+        tay
+        lda icon_types,y
+        sta temp2
+        lda temp
+        ldy temp3
+        clc
+        adc cardindxn,y
+        tay
+        lda temp2
+        ora icon_numbers,y
+        sta cardbsprite,x
+        
+        cpx #$00
+        bne fill_card_b_loop
+        rts
+  
+; printcard
+print_card_a
+        ldx #$07
+sprite_loop_a
+	dex
+	lda cardasprite,x
+        sta WSYNC	; wait for next scanline
+        sta GRP0
+
+        lda #$F
+        sta COLUP0
+        
+        cpx #$00
+        bne sprite_loop_a
         
 
+        lda #$00
+        sta WSYNC
+        sta GRP0
+        rts
+
+; printcard
+; A = a card indexnumber
+; X = b card indexnumber
+print_card_ab
+	sta temp3
+        ldx #$07
+sprite_loop_ab
+	dex
+	lda cardasprite,x
+        ldy cardbsprite,x
+        sta WSYNC	; wait for next scanline
+        sta GRP0
+        sty GRP1
+
+        lda #$F
+        sta COLUP0
+        sta COLUP1
+        
+        cpx #$00
+        bne sprite_loop_ab
+        
+
+        lda #$00
+        sta WSYNC
+        sta GRP0
+        sta GRP1
+        rts
 
 ; sethorizpos routine
 ; A = X coordinate
@@ -205,6 +314,31 @@ mult7_loop
 	adc #$07
         dex
         bne mult7_loop
+        rts
+        
+; fill all the cards
+fill_cards
+	ldx #cards_len
+fill_cards_loop
+	dex
+	lda cards,x
+        lsr
+        lsr
+        lsr
+        lsr
+        stx temp
+        jsr mult7
+        ldx temp
+	sta cardindxt,x
+        
+        lda cards,x
+        and #$0F
+        stx temp
+        jsr mult7
+        ldx temp
+	sta cardindxn,x
+        cpx #$00
+        bne fill_cards_loop
         rts
         
         
