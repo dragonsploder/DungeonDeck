@@ -1,6 +1,8 @@
 
 	processor 6502
         include "vcs.h"
+        include "macro.h"
+        include "xmacro.h"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Macros
 bg_color = $84
@@ -68,15 +70,9 @@ new_frame
         ;lsr SWCHB	; test Game Reset switch
         ;bcc init	; reset?
         
-        lda #2
-        sta VBLANK	; turn on vblank
-        sta VSYNC	; turn on vsync
+        VERTICAL_SYNC
         
-        sta WSYNC	; first scanline
-        sta WSYNC	; second scanline
-        sta WSYNC	; third scanline
-        lda #0
-        sta VSYNC	; turn off VSYNC
+        TIMER_SETUP 37
         
         lda #sprite_x
         ldx #$0
@@ -84,61 +80,98 @@ new_frame
         sta WSYNC	; sync w/ scanline
         sta HMOVE	; apply fine offsets
         
-        ldx #35		; count 35 scanlines
-lvblank
-	sta WSYNC	
-        dex
-        bne lvblank
         
-      	lda #0
+      	TIMER_WAIT
+        
+        
+        lda #$00
         sta VBLANK	; turn off VBLANK
         
-        
-        
-        ldx #192	; count 192 scanlines
-lvscan
-	ldy #bg_color   ; load bg color
+        ldy #bg_color   ; load bg color
 	sty COLUBK	; set bg color
         
-        txa
-        sec
-        sbc #sprite_y
-        cmp #sprite_height
-        bcc insprite
-        lda #$00
-	jmp outsprite
-insprite
+        TIMER_SETUP 100
+        TIMER_WAIT
+        
+        
+        ldx #$07
+sprite_loop
+	dex
+
+	txa
 	sta temp
+        clc
 	adc card1t
         tay
         lda icon_types,y
         sta temp2
         lda temp
+        clc
         adc card1n
         tay
         lda temp2
         ora icon_numbers,y
-outsprite:
         sta WSYNC	; wait for next scanline
         sta GRP0
 
         lda #$F
         sta COLUP0
         
-	dex
-        bne lvscan
+        cpx #$00
+        bne sprite_loop
+        
 
+        lda #$00
+        sta WSYNC
+        sta GRP0
+        
+        
+        TIMER_SETUP 84
+        TIMER_WAIT
+        
+        
+;        ldx #192	; count 192 scanlines
+;lvscan  
+;        txa
+;        sec
+;        sbc #sprite_y
+;        cmp #sprite_height
+;        bcc insprite
+;        lda #$00
+;	jmp outsprite
+;insprite
+;	sta temp
+;	adc card1t
+;       tay
+;       lda icon_types,y
+;        sta temp2
+;        lda temp
+;        adc card1n
+;        tay
+;        lda temp2
+;        ora icon_numbers,y
+;outsprite:
+;        sta WSYNC	; wait for next scanline
+;        sta GRP0
+;
+;        lda #$F
+;        sta COLUP0
+;        
+;	dex
+;        bne lvscan
 
-
+	
 	lda #2		
         sta VBLANK	; turn on VBLANK
-        ldx #30		; count 30 scanlines
-lvover
-	sta WSYNC	
-        dex
-        bne lvover
+        
+        
+	TIMER_SETUP 30
+        TIMER_WAIT
 
         jmp new_frame
+
+
+        
 
 
 ; sethorizpos routine
@@ -159,7 +192,7 @@ divideloop
 	sta HMP0,x	; set fine offset
 	rts		; return to caller
         
-; Calc sprite offset
+; mult7
 ; A = Times to multiplly, will have results
 mult7
 	tax
