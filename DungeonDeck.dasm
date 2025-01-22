@@ -1,10 +1,10 @@
-
+; Boilerplate
 	processor 6502
         include "vcs.h"
         include "macro.h"
         include "xmacro.h"
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Macros
+        
+; Defines
 bg_color = $84
 sprite_height = $07
 sprite_y = $40
@@ -12,9 +12,7 @@ sprite_x = $52
 sprite = $14
 cards_len = $08
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Variables segment
-
+; Var
         seg.u variables
 	org $80
         
@@ -30,24 +28,13 @@ cardindxn ds 8
 cardasprite ds 7
 cardbsprite ds 7
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Code segment
+; Code 
 
 	seg code
         org $f000
 
 init
-	cld 		; clear decimal mode flag
-        sei		; set interrupt disable flag
-        ldx #$FF	
-        txs		; set stack pointer to $FF
-        
-        lda #0		; zero out zero page
-        ldx #$FF
-zero_zp
-	sta $0,X
-        dex
-        bne zero_zp
+	CLEAN_START
 	
         
         lda #$20
@@ -67,7 +54,6 @@ zero_zp
         lda #$17
         sta cards+7
         jsr fill_cards
-        
 
 
 new_frame
@@ -389,7 +375,6 @@ fill_cards_loop
         
         
 ; icons
-
 icon_types
 icon_sword
 	.byte #%01000000 
@@ -415,7 +400,7 @@ icon_sheild
         .byte #%10100000
         .byte #%00000000
         .byte #%01000000
-icon_enemie
+icon_enemy
 	.byte #%10100000 
         .byte #%10100000
         .byte #%11100000
@@ -423,8 +408,15 @@ icon_enemie
         .byte #%00000000
         .byte #%10100000
         .byte #%10100000
-        
-        
+icon_blank
+	.byte #%00000000 
+        .byte #%00000000
+        .byte #%00000000
+        .byte #%00000000
+        .byte #%00000000
+        .byte #%00000000
+        .byte #%00000000
+
         
 icon_numbers
 icon_zero
@@ -507,10 +499,17 @@ icon_nine
         .byte #%00000101
         .byte #%00000101
         .byte #%00000111
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Epilogue
-
+icon_blank2
+	.byte #%00000000
+        .byte #%00000000
+        .byte #%00000000
+        .byte #%00000000
+        .byte #%00000000
+        .byte #%00000000
+        .byte #%00000000
+     
+     
+; Vectors
 	org $FFFC
         .word init	; reset vector
         .word init	; BRK vector
