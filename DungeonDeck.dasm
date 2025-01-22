@@ -5,38 +5,37 @@
         include "xmacro.h"
         
 ; Defines
-bg_color = $84
-sprite_height = $07
-sprite_y = $40
-sprite_x = $52
-sprite = $14
-cards_len = $08
+bg_color 	= $84
+sprite_height 	= $07
+sprite_y 	= $40
+sprite_x 	= $52
+sprite 		= $14
+cards_len 	= $08
 
 ; Var
         seg.u variables
 	org $80
         
-temp	byte
-temp2 	byte
-temp3 	byte
+; Temporary storage
+temp		byte
+temp2 		byte
+temp3 		byte
 
-
-cards	ds 8
-cardindxt ds 8
-cardindxn ds 8
-
-cardasprite ds 7
-cardbsprite ds 7
+; Card data
+cards		ds 8
+cardindxt 	ds 8
+cardindxn 	ds 8
+cardasprite 	ds 7
+cardbsprite 	ds 7
 
 ; Code 
-
 	seg code
         org $f000
 
 init
 	CLEAN_START
 	
-        
+        ; Fill cards with data
         lda #$20
         sta cards+0
         lda #$11
@@ -53,8 +52,6 @@ init
         sta cards+6
         lda #$17
         sta cards+7
-        jsr fill_cards
-
 
 new_frame
         lsr SWCHB	; test Game Reset switch
@@ -65,17 +62,28 @@ new_frame
         
         TIMER_SETUP 37
         
-        lda #sprite_x
-        ldx #$0
-        jsr sethorizpos
-        sta WSYNC	; sync w/ scanline
-        sta HMOVE	; apply fine offsets
+        ;lda #sprite_x
+        ;ldx #$0
+        ;jsr sethorizpos
+        ;sta WSYNC	; sync w/ scanline
+        ;sta HMOVE	; apply fine offsets
         
-        lda #$63
-        ldx #$1
-        jsr sethorizpos
-        sta WSYNC	; sync w/ scanline
-        sta HMOVE	; apply fine offsets
+        sta WSYNC
+        SLEEP 40
+        lda #$c0
+        sta RESP0
+        sta HMP0
+        lda #$00
+        sta RESP1
+        sta HMP1
+        sta WSYNC
+        sta HMOVE
+        
+        ;lda #$63
+        ;ldx #$1
+        ;jsr sethorizpos
+        ;sta WSYNC	; sync w/ scanline
+        ;sta HMOVE	; apply fine offsets
         
         
       	TIMER_WAIT
@@ -98,7 +106,7 @@ new_frame
         
 	jsr print_card_a
         
-        TIMER_SETUP 15
+        TIMER_SETUP 14
         
         lda #$01
         jsr fill_card_a
@@ -122,7 +130,7 @@ new_frame
         
 	jsr print_card_ab
         
-        TIMER_SETUP 15
+        TIMER_SETUP 14
         
         
         lda #$03
@@ -130,7 +138,7 @@ new_frame
         
         sta WSYNC
         SLEEP 43
-        lda #$f0
+        lda #$d0
         sta RESP0
         sta HMP0
         sta WSYNC
@@ -142,7 +150,7 @@ new_frame
 	jsr print_card_a
         
         
-        TIMER_SETUP 30
+        TIMER_SETUP 29
         
         lda #$04
         jsr fill_card_a
@@ -153,7 +161,7 @@ new_frame
 	jsr print_card_a
         
         
-        TIMER_SETUP 18
+        TIMER_SETUP 14
         
         lda #$05
         jsr fill_card_a
@@ -165,7 +173,7 @@ new_frame
         lda #$00
         sta RESP0
         sta HMP0
-        lda #$20
+        lda #$00
         sta RESP1
         sta HMP1
         sta WSYNC
@@ -177,14 +185,14 @@ new_frame
         
 	jsr print_card_ab
         
-        TIMER_SETUP 15
+        TIMER_SETUP 14
         
         lda #$07
         jsr fill_card_a
         
         sta WSYNC
         SLEEP 43
-        lda #$f0
+        lda #$d0
         sta RESP0
         sta HMP0
         sta WSYNC
@@ -195,7 +203,7 @@ new_frame
         
         jsr print_card_a
         
-        TIMER_SETUP 30
+        TIMER_SETUP 29
         TIMER_WAIT
 
 	
@@ -204,12 +212,16 @@ new_frame
         
         
 	TIMER_SETUP 30
+        
+        jsr fill_cards
+        
         TIMER_WAIT
 
         jmp new_frame
 
-; fillcard
-; A = card index number
+; fillcard_a
+; A = card index
+; Fills cardasprite with the card index
 fill_card_a
 	sta temp3
         ldx #$07
@@ -237,8 +249,9 @@ fill_card_a_loop
         bne fill_card_a_loop
         rts
 
-; fillcard
+; fillcard_b
 ; A = card index number
+; Fills cardbsprite with the card index
 fill_card_b
 	sta temp3
         ldx #$07
@@ -266,7 +279,8 @@ fill_card_b_loop
         bne fill_card_b_loop
         rts
   
-; printcard
+; print_card_a
+; print cardasprite to screen
 print_card_a
         ldx #$07
 sprite_loop_a
@@ -287,9 +301,8 @@ sprite_loop_a
         sta GRP0
         rts
 
-; printcard
-; A = a card indexnumber
-; X = b card indexnumber
+; print_card_ab
+; print cardasprite and cardbsprite to screen
 print_card_ab
 	sta temp3
         ldx #$07
@@ -334,24 +347,25 @@ divideloop
 	rts		; return to caller
         
 ; mult7
-; A = Times to multiplly, will have results
+; A = A * 7
 mult7
 	tax
         lda #$00
         cpx #$00
-        bne mult7_loop
+        bne m7_loop
         rts
-mult7_loop
+m7_loop
 	clc
 	adc #$07
         dex
-        bne mult7_loop
+        bne m7_loop
         rts
         
-; fill all the cards
+; fill_cards
+; Converts cards array to cardinxt and cardinxn
 fill_cards
 	ldx #cards_len
-fill_cards_loop
+fc_loop
 	dex
 	lda cards,x
         lsr
@@ -370,7 +384,7 @@ fill_cards_loop
         ldx temp
 	sta cardindxn,x
         cpx #$00
-        bne fill_cards_loop
+        bne fc_loop
         rts
         
         
