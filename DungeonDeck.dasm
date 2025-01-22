@@ -8,7 +8,7 @@
 bg_color = $84
 sprite_height = $07
 sprite_y = $40
-sprite_x = $55
+sprite_x = $52
 sprite = $14
 cards_len = $08
 
@@ -50,21 +50,21 @@ zero_zp
         bne zero_zp
 	
         
-        lda #00
+        lda #$20
         sta cards+0
-        lda #01
+        lda #$11
         sta cards+1
-        lda #02
+        lda #$02
         sta cards+2
-        lda #03
+        lda #$13
         sta cards+3
-        lda #04
+        lda #$34
         sta cards+4
-        lda #05
+        lda #$25
         sta cards+5
-        lda #06
+        lda #$36
         sta cards+6
-        lda #07
+        lda #$17
         sta cards+7
         jsr fill_cards
         
@@ -85,7 +85,7 @@ new_frame
         sta WSYNC	; sync w/ scanline
         sta HMOVE	; apply fine offsets
         
-        lda #70
+        lda #$63
         ldx #$1
         jsr sethorizpos
         sta WSYNC	; sync w/ scanline
@@ -120,35 +120,72 @@ new_frame
         lda #$02
         jsr fill_card_b
         
+
+        sta WSYNC
+        SLEEP 40
+        lda #$00
+        sta RESP0
+        sta HMP0
+        sta WSYNC
+        SLEEP 70
+        sta HMOVE
+	
+        
         TIMER_WAIT
+
         
 	jsr print_card_ab
         
         TIMER_SETUP 15
         
+        
         lda #$03
         jsr fill_card_a
+        
+        sta WSYNC
+        SLEEP 43
+        lda #$f0
+        sta RESP0
+        sta HMP0
+        sta WSYNC
+        SLEEP 70
+        sta HMOVE
         
         TIMER_WAIT
         
 	jsr print_card_a
+        
         
         TIMER_SETUP 30
         
         lda #$04
         jsr fill_card_a
         
+        
         TIMER_WAIT
         
 	jsr print_card_a
         
         
-        TIMER_SETUP 15
+        TIMER_SETUP 18
         
         lda #$05
         jsr fill_card_a
         lda #$06
         jsr fill_card_b
+        
+        sta WSYNC
+        SLEEP 40
+        lda #$00
+        sta RESP0
+        sta HMP0
+        lda #$20
+        sta RESP1
+        sta HMP1
+        sta WSYNC
+        SLEEP 70
+        sta HMOVE
+        
         
         TIMER_WAIT
         
@@ -159,11 +196,20 @@ new_frame
         lda #$07
         jsr fill_card_a
         
+        sta WSYNC
+        SLEEP 43
+        lda #$f0
+        sta RESP0
+        sta HMP0
+        sta WSYNC
+        SLEEP 70
+        sta HMOVE
+        
         TIMER_WAIT
         
         jsr print_card_a
         
-        TIMER_SETUP 33
+        TIMER_SETUP 30
         TIMER_WAIT
 
 	
@@ -369,7 +415,14 @@ icon_sheild
         .byte #%10100000
         .byte #%00000000
         .byte #%01000000
-        
+icon_enemie
+	.byte #%10100000 
+        .byte #%10100000
+        .byte #%11100000
+        .byte #%01000000
+        .byte #%00000000
+        .byte #%10100000
+        .byte #%10100000
         
         
         
@@ -383,13 +436,13 @@ icon_zero
         .byte #%00000101
         .byte #%00000111
 icon_one
-	.byte #%00000100
-        .byte #%00000100
-        .byte #%00000100
-        .byte #%00000100
-        .byte #%00000100
-        .byte #%00000100
-        .byte #%00000100
+	.byte #%0000001
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000001
 icon_two
 	.byte #%00000111
         .byte #%00000100
