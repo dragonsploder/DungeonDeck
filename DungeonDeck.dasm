@@ -60,33 +60,19 @@ new_frame
         VERTICAL_SYNC
         
         
-        TIMER_SETUP 37
+        TIMER_SETUP 37  ; Vblank
         
-        ;lda #sprite_x
-        ;ldx #$0
-        ;jsr sethorizpos
-        ;sta WSYNC	; sync w/ scanline
-        ;sta HMOVE	; apply fine offsets
         
-        sta WSYNC
-        SLEEP 40
+        sta WSYNC	; Set sprite A position
+        SLEEP 40	
         lda #$c0
         sta RESP0
         sta HMP0
-        lda #$00
-        sta RESP1
-        sta HMP1
         sta WSYNC
         sta HMOVE
         
-        ;lda #$63
-        ;ldx #$1
-        ;jsr sethorizpos
-        ;sta WSYNC	; sync w/ scanline
-        ;sta HMOVE	; apply fine offsets
         
-        
-      	TIMER_WAIT
+      	TIMER_WAIT	; End Vblank
         
         
         lda #$00
@@ -97,46 +83,50 @@ new_frame
         
         
         
-        TIMER_SETUP 30
+        TIMER_SETUP 30  ; 30 scanlines before first card
         
         lda #$00
-        jsr fill_card_a
+        jsr fill_card_a	; Fill A sprite with card 0 data
         
-        TIMER_WAIT
+        TIMER_WAIT	; End 30 scanlines
         
-	jsr print_card_a
-        
-        TIMER_SETUP 14
+	jsr print_card_a	; Print card 0
+        			; Takes 8 scanlines
+                                
+        TIMER_SETUP 14	; 14 scanlines spacing
         
         lda #$01
-        jsr fill_card_a
+        jsr fill_card_a ; Fill A sprite with card 1 data
         
         lda #$02
-        jsr fill_card_b
+        jsr fill_card_b ; Fill B sprite with card 2 data
         
 
-        sta WSYNC
+        sta WSYNC	; Set card 1&2 position
         SLEEP 40
         lda #$00
         sta RESP0
         sta HMP0
+        lda #$00
+        sta RESP1
+        sta HMP1
         sta WSYNC
         SLEEP 70
         sta HMOVE
 	
         
-        TIMER_WAIT
-
+        TIMER_WAIT	; End 14 scanlines
         
-	jsr print_card_ab
+	jsr print_card_ab	; Printcard 1&2
+        			; Takes 8 scanlines
         
-        TIMER_SETUP 14
+        TIMER_SETUP 14	; 14 scanlines spacing
         
         
         lda #$03
-        jsr fill_card_a
+        jsr fill_card_a	; Fill A sprite with card 3 data
         
-        sta WSYNC
+        sta WSYNC	; Set card 3 position
         SLEEP 43
         lda #$d0
         sta RESP0
@@ -145,30 +135,32 @@ new_frame
         SLEEP 70
         sta HMOVE
         
-        TIMER_WAIT
+        TIMER_WAIT	; End 14 scanlines
         
-	jsr print_card_a
+	jsr print_card_a	; Print card 3
+        			; Takes 8 scanlines
         
         
-        TIMER_SETUP 29
+        TIMER_SETUP 29	; 29 scanlines spacing
         
         lda #$04
-        jsr fill_card_a
+        jsr fill_card_a	; Fill A sprite with card 4 data
         
         
-        TIMER_WAIT
+        TIMER_WAIT	; End 29 scanlines
         
-	jsr print_card_a
+	jsr print_card_a	; Print card 4
+        			; Takes 8 scanlines
         
         
-        TIMER_SETUP 14
+        TIMER_SETUP 14 	; 14 scanlines spacing
         
         lda #$05
-        jsr fill_card_a
+        jsr fill_card_a	; Fill Sprite A with card 5 data
         lda #$06
-        jsr fill_card_b
+        jsr fill_card_b ; Fill Sprite B with card 6 data
         
-        sta WSYNC
+        sta WSYNC	; Set card 5&6 position
         SLEEP 40
         lda #$00
         sta RESP0
@@ -180,17 +172,17 @@ new_frame
         SLEEP 70
         sta HMOVE
         
+        	
+        TIMER_WAIT	; End 14 scanlines
         
-        TIMER_WAIT
+	jsr print_card_ab	; Print card 5&6
         
-	jsr print_card_ab
-        
-        TIMER_SETUP 14
+        TIMER_SETUP 14	; 14 scanlines spacing
         
         lda #$07
-        jsr fill_card_a
+        jsr fill_card_a	; Fill Sprite A with card 7 data
         
-        sta WSYNC
+        sta WSYNC	; Set card 7 position
         SLEEP 43
         lda #$d0
         sta RESP0
@@ -199,23 +191,23 @@ new_frame
         SLEEP 70
         sta HMOVE
         
-        TIMER_WAIT
+        TIMER_WAIT	; End 14 scanlines
         
         jsr print_card_a
         
-        TIMER_SETUP 29
-        TIMER_WAIT
+        TIMER_SETUP 29	; 29 scanlines spacing
+        TIMER_WAIT	; End 29 scanlines
 
 	
 	lda #2		
         sta VBLANK	; turn on VBLANK
         
         
-	TIMER_SETUP 30
+	TIMER_SETUP 30	; Vblank
         
-        jsr fill_cards
+        jsr fill_cards	; Setup card indexes
         
-        TIMER_WAIT
+        TIMER_WAIT	; End Vblank
 
         jmp new_frame
 
@@ -225,16 +217,16 @@ new_frame
 fill_card_a
 	sta temp3
         ldx #$07
-fill_card_a_loop
+fill_card_a_loop	; Loop over the 7 lines in the sprite
 	dex
 
 	txa
 	sta temp
         clc
-        ldy temp3
+        ldy temp3	; Add current scanline to index
 	adc cardindxt,y
         tay
-        lda icon_types,y
+        lda icon_types,y	; Get type bitmap
         sta temp2
         lda temp
         ldy temp3
@@ -242,8 +234,8 @@ fill_card_a_loop
         adc cardindxn,y
         tay
         lda temp2
-        ora icon_numbers,y
-        sta cardasprite,x
+        ora icon_numbers,y	; Combinde type and number bitmap
+        sta cardasprite,x	; Store in current sprite
         
         cpx #$00
         bne fill_card_a_loop
@@ -254,26 +246,26 @@ fill_card_a_loop
 ; Fills cardbsprite with the card index
 fill_card_b
 	sta temp3
-        ldx #$07
-fill_card_b_loop
+        ldx #$07	
+fill_card_b_loop	; Loop over the 7 lines in the sprite
 	dex
 
 	txa
 	sta temp
         clc
-        ldy temp3
+        ldy temp3	; Add current scanline to index
 	adc cardindxt,y
         tay
-        lda icon_types,y
+        lda icon_types,y	; Get type bitmap
         sta temp2
         lda temp
         ldy temp3
         clc
-        adc cardindxn,y
+        adc cardindxn,y	
         tay
         lda temp2
-        ora icon_numbers,y
-        sta cardbsprite,x
+        ora icon_numbers,y	; Combinde type and number bitmap
+        sta cardbsprite,x	; Store in current sprite
         
         cpx #$00
         bne fill_card_b_loop
@@ -282,40 +274,39 @@ fill_card_b_loop
 ; print_card_a
 ; print cardasprite to screen
 print_card_a
-        ldx #$07
+        ldx #$07		; 7 scanlines
 sprite_loop_a
 	dex
-	lda cardasprite,x
-        sta WSYNC	; wait for next scanline
-        sta GRP0
+	lda cardasprite,x	; Load A sprite data
+        sta WSYNC	
+        sta GRP0		; Write to sprite register
 
         lda #$F
-        sta COLUP0
+        sta COLUP0		; Set color
         
         cpx #$00
         bne sprite_loop_a
         
 
         lda #$00
-        sta WSYNC
-        sta GRP0
+        sta WSYNC	
+        sta GRP0		; Clear sprite register
         rts
 
 ; print_card_ab
 ; print cardasprite and cardbsprite to screen
 print_card_ab
-	sta temp3
-        ldx #$07
-sprite_loop_ab
+        ldx #$07	
+sprite_loop_ab			; 7 scanlines
 	dex
-	lda cardasprite,x
-        ldy cardbsprite,x
-        sta WSYNC	; wait for next scanline
-        sta GRP0
+	lda cardasprite,x	; Load A sprite data
+        ldy cardbsprite,x	; Load B sprite data
+        sta WSYNC
+        sta GRP0		; Write to sprite registers
         sty GRP1
 
         lda #$F
-        sta COLUP0
+        sta COLUP0		; Set colors
         sta COLUP1
         
         cpx #$00
@@ -324,27 +315,9 @@ sprite_loop_ab
 
         lda #$00
         sta WSYNC
-        sta GRP0
+        sta GRP0		; Clear sprite data
         sta GRP1
         rts
-
-; sethorizpos routine
-; A = X coordinate
-; X = player number (0 or 1)
-sethorizpos
-	sta WSYNC	; start a new line
-	sec		; set carry flag
-divideloop
-	sbc #15		; subtract 15
-	bcs divideloop	; branch until negative
-	eor #7		; calculate fine offset
-	asl
-	asl
-	asl
-	asl
-	sta RESP0,x	; fix coarse position
-	sta HMP0,x	; set fine offset
-	rts		; return to caller
         
 ; mult7
 ; A = A * 7
@@ -364,29 +337,28 @@ m7_loop
 ; fill_cards
 ; Converts cards array to cardinxt and cardinxn
 fill_cards
-	ldx #cards_len
+	ldx #cards_len	; 8 cards
 fc_loop
 	dex
-	lda cards,x
-        lsr
+	lda cards,x	; Load card index
+        lsr		; Get high 4 bites
         lsr
         lsr
         lsr
         stx temp
-        jsr mult7
-        ldx temp
-	sta cardindxt,x
-        
+        jsr mult7	; Each sprite is 7 bytes
+        ldx temp	; so multiply each index by 7
+	sta cardindxt,x	; Store actual offset for type
+
         lda cards,x
-        and #$0F
+        and #$0F	; Get the low 4 bites
         stx temp
-        jsr mult7
+        jsr mult7	; See above
         ldx temp
-	sta cardindxn,x
+	sta cardindxn,x	; Store actual offset for number
         cpx #$00
         bne fc_loop
         rts
-        
         
 ; icons
 icon_types
