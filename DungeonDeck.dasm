@@ -22,7 +22,6 @@ deck_len	= 36
 temp		byte
 temp2 		byte
 temp3 		byte
-temp4		byte
 
 ; Card data
 cards		ds 8
@@ -35,6 +34,8 @@ cardbsprite 	ds 7
 deckindex	byte
 deck		ds deck_len
 
+; Underline
+underlineindex	ds 1
 
 ; Random Num Stuff
 seed		ds 2
@@ -47,9 +48,9 @@ init
 	CLEAN_START
   	
         ; Set seed
-        lda #$75
+        lda #$76
         sta seed
-        lda #$05
+        lda #$01
         sta seed+1
         
         jsr fill_deck
@@ -75,6 +76,13 @@ init
         sta cards+6
         lda #$7A
         sta cards+7
+        
+        ; Setup underline
+        lda #%000110000
+        sta NUSIZ0
+        
+        lda #$02
+        sta underlineindex
 
 new_frame
         lsr SWCHB	; test Game Reset switch
@@ -91,6 +99,13 @@ new_frame
         lda #$c0
         sta RESP0
         sta HMP0
+        
+        
+        lda #$10
+        sta HMM0
+        sta WSYNC
+        SLEEP 44
+        sta RESM0
         sta WSYNC
         sta HMOVE
         
@@ -115,6 +130,14 @@ new_frame
         
 	jsr print_card_a	; Print card 0
         			; Takes 8 scanlines
+                  
+        lda #$01
+        cmp underlineindex
+        bne skip_first_line
+        sta WSYNC
+        sta WSYNC
+        jsr print_underline
+skip_first_line
                                 
         TIMER_SETUP 14	; 14 scanlines spacing
         
@@ -155,6 +178,15 @@ new_frame
         sta RESP0
         sta HMP0
         sta WSYNC
+        ;SLEEP 70
+        ;sta HMOVE
+        
+        lda #$f0
+        sta HMM0
+        sta WSYNC
+        SLEEP 46
+        sta RESM0
+        sta WSYNC
         SLEEP 70
         sta HMOVE
         
@@ -163,8 +195,16 @@ new_frame
 	jsr print_card_a	; Print card 3
         			; Takes 8 scanlines
         
+        lda #$02
+        cmp underlineindex
+        bne skip_second_line
+        sta WSYNC
+        sta WSYNC
+        jsr print_underline
+skip_second_line
         
         TIMER_SETUP 29	; 29 scanlines spacing
+        
         
         lda #$04
         jsr fill_card_a	; Fill A sprite with card 4 data
@@ -340,6 +380,22 @@ sprite_loop_ab			; 7 scanlines
         sta WSYNC
         sta GRP0		; Clear sprite data
         sta GRP1
+        rts
+        
+; print_underline
+print_underline
+        lda #$00
+        sta COLUP0
+        
+        sta WSYNC
+        lda #$02
+        sta ENAM0
+        
+        sta WSYNC
+        sta WSYNC
+        lda #$00
+        sta ENAM0
+	
         rts
         
 ; mult7
