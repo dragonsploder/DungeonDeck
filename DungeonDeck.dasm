@@ -12,6 +12,8 @@ sprite_x 	= $52
 sprite 		= $14
 cards_len 	= $08
 
+deck_len	= 36
+
 ; Var
         seg.u variables
 	org $80
@@ -20,6 +22,7 @@ cards_len 	= $08
 temp		byte
 temp2 		byte
 temp3 		byte
+temp4		byte
 
 ; Card data
 cards		ds 8
@@ -28,29 +31,49 @@ cardindxn 	ds 8
 cardasprite 	ds 7
 cardbsprite 	ds 7
 
+; Deck
+deckindex	byte
+deck		ds deck_len
+
+
+; Random Num Stuff
+seed		ds 2
+
 ; Code 
 	seg code
-        org $f000
+        org $F000
 
 init
 	CLEAN_START
+  	
+        ; Set seed
+        lda #$75
+        sta seed
+        lda #$05
+        sta seed+1
+        
+        jsr fill_deck
+        jsr shuffle_deck
 	
         ; Fill cards with data
-        lda #$20
+        lda deck+0
         sta cards+0
-        lda #$11
+        lda deck+1
         sta cards+1
-        lda #$02
+        lda deck+2
         sta cards+2
-        lda #$13
+        lda deck+3
         sta cards+3
-        lda #$34
+        
+        
+        ; Setup Player
+        lda #$49
         sta cards+4
-        lda #$25
+        lda #$5A
         sta cards+5
-        lda #$36
+        lda #$6A
         sta cards+6
-        lda #$17
+        lda #$7A
         sta cards+7
 
 new_frame
@@ -360,6 +383,87 @@ fc_loop
         bne fc_loop
         rts
         
+; fill_deck
+; Copy preset deck to memory
+fill_deck
+	ldx #deck_len
+fd_loop
+	dex
+	lda deck_start_layout,x
+        sta deck,x
+        cpx #$00
+        bne fd_loop
+        
+        rts
+        
+; shuffle_deck
+; Shuffles the values in our deck around
+; Very slow, but very simple
+shuffle_deck
+	ldx #$FF	; Loop 255 times
+sd_loop
+	txa
+        pha
+	;stx temp3
+        
+	jsr rand
+        ldx #deck_len
+        jsr modulo	; Offset one
+        pha		
+
+        jsr rand
+        ldx #deck_len
+        jsr modulo	; Offset two
+        tay 
+        lda deck,y	; Load card at offset two
+        sta temp
+        
+        pla 
+        tax 
+        lda deck,x	; Load card at offset one
+        pha
+        lda temp	; Load card two
+        sta deck,x	; Store card two at offset one
+        pla
+        sta deck,y	; Store card one at offset two
+        
+        pla
+        tax
+        dex
+        bne sd_loop
+        rts
+        
+; mod
+; A = A % X
+modulo
+	stx temp
+m_loop
+	cmp temp
+        bcc m_end
+        sbc temp
+        jmp m_loop
+m_end
+	rts
+
+; Rand
+; Return and step the seed
+; A = random number
+; https://github.com/bbbradsmith/prng_6502/blob/master/galois16.s
+rand
+	ldy #8
+	lda seed+0
+r_loop
+	asl        ; shift the register
+	rol seed+1
+	bcc r_skip
+	eor #$39   ; apply XOR feedback whenever a 1 bit is shifted out
+r_skip
+	dey
+	bne r_loop
+	sta seed+0
+	cmp #0     ; reload flags
+	rts
+        
 ; icons
 icon_types
 icon_sword
@@ -394,6 +498,38 @@ icon_enemy
         .byte #%00000000
         .byte #%10100000
         .byte #%10100000
+icon_player
+	.byte #%01000000 
+        .byte #%10100000
+        .byte #%01000000
+        .byte #%10100000
+        .byte #%01000000
+        .byte #%10100000
+        .byte #%01000000
+icon_left
+	.byte #%11100000 
+        .byte #%11100000
+        .byte #%10000000
+        .byte #%10000000
+        .byte #%10000000
+        .byte #%10000000
+        .byte #%10000000 
+icon_right
+	.byte #%10100000 
+        .byte #%10100000
+        .byte #%11000000
+        .byte #%11000000
+        .byte #%10100000
+        .byte #%10100000
+        .byte #%11000000
+icon_backpack
+	.byte #%11000000 
+        .byte #%10100000
+        .byte #%10100000
+        .byte #%11000000
+        .byte #%10100000
+        .byte #%10100000
+        .byte #%11000000
 icon_blank
 	.byte #%00000000 
         .byte #%00000000
@@ -485,6 +621,14 @@ icon_nine
         .byte #%00000101
         .byte #%00000101
         .byte #%00000111
+icon_x
+	.byte #%00000101
+        .byte #%00000101
+        .byte #%00000010
+        .byte #%00000010
+        .byte #%00000010
+        .byte #%00000101
+        .byte #%00000101
 icon_blank2
 	.byte #%00000000
         .byte #%00000000
@@ -493,6 +637,12 @@ icon_blank2
         .byte #%00000000
         .byte #%00000000
         .byte #%00000000
+        
+deck_start_layout
+	HEX 01 02 03 04 05 06 07 08 09
+        HEX 11 12 13 14 15 16 17 18 19
+        HEX 21 22 23 24 25 26 27 28 29
+        HEX 31 32 33 34 35 36 37 38 39
      
      
 ; Vectors
