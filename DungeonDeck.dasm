@@ -81,7 +81,7 @@ init
         lda #%000110000
         sta NUSIZ0
         
-        lda #$02
+        lda #$00
         sta underlineindex
 
 new_frame
@@ -121,16 +121,18 @@ new_frame
         
         
         
-        TIMER_SETUP 30  ; 30 scanlines before first card
+        TIMER_SETUP 20  ; 20 scanlines before first card
         
         lda #$00
         jsr fill_card_a	; Fill A sprite with card 0 data
         
-        TIMER_WAIT	; End 30 scanlines
+        TIMER_WAIT	; End 20 scanlines
         
 	jsr print_card_a	; Print card 0
         			; Takes 8 scanlines
-                  
+          
+        TIMER_SETUP 20
+        
         lda #$01
         cmp underlineindex
         bne skip_first_line
@@ -139,7 +141,6 @@ new_frame
         jsr print_underline
 skip_first_line
                                 
-        TIMER_SETUP 14	; 14 scanlines spacing
         
         lda #$01
         jsr fill_card_a ; Fill A sprite with card 1 data
@@ -150,10 +151,10 @@ skip_first_line
 
         sta WSYNC	; Set card 1&2 position
         SLEEP 40
-        lda #$00
+        lda #$30
         sta RESP0
         sta HMP0
-        lda #$00
+        lda #$d0
         sta RESP1
         sta HMP1
         sta WSYNC
@@ -161,25 +162,47 @@ skip_first_line
         sta HMOVE
 	
         
-        TIMER_WAIT	; End 14 scanlines
+        TIMER_WAIT	; End 20 scanlines
         
 	jsr print_card_ab	; Printcard 1&2
         			; Takes 8 scanlines
+       	
+        TIMER_SETUP 20
         
-        TIMER_SETUP 14	; 14 scanlines spacing
+        lda #$02
+        cmp underlineindex
+        bne skip_second_line
+        lda #$e0
+        sta HMM0
+        sta WSYNC
+        SLEEP 70
+        sta HMOVE
+        sta WSYNC
+        jsr print_underline
+skip_second_line
         
-        
+        lda #$03
+        cmp underlineindex
+        bne skip_third_line
+        lda #$c0
+        sta HMM0
+        sta WSYNC
+        SLEEP 50
+        STA RESM0
+        sta WSYNC
+        SLEEP 70
+        sta HMOVE
+        jsr print_underline
+skip_third_line
+
         lda #$03
         jsr fill_card_a	; Fill A sprite with card 3 data
         
-        sta WSYNC	; Set card 3 position
-        SLEEP 43
         lda #$d0
+        sta WSYNC	; Set card 3 position
+        SLEEP 45
         sta RESP0
         sta HMP0
-        sta WSYNC
-        ;SLEEP 70
-        ;sta HMOVE
         
         lda #$f0
         sta HMM0
@@ -190,33 +213,40 @@ skip_first_line
         SLEEP 70
         sta HMOVE
         
-        TIMER_WAIT	; End 14 scanlines
+        TIMER_WAIT	; End 20 scanlines
         
 	jsr print_card_a	; Print card 3
         			; Takes 8 scanlines
-        
-        lda #$02
+
+	TIMER_SETUP 24
+
+        lda #$04
         cmp underlineindex
-        bne skip_second_line
+        bne skip_fourth_line
         sta WSYNC
         sta WSYNC
         jsr print_underline
-skip_second_line
-        
-        TIMER_SETUP 29	; 29 scanlines spacing
-        
+skip_fourth_line
         
         lda #$04
         jsr fill_card_a	; Fill A sprite with card 4 data
         
         
-        TIMER_WAIT	; End 29 scanlines
+        TIMER_WAIT	; End 24 scanlines
         
 	jsr print_card_a	; Print card 4
         			; Takes 8 scanlines
         
         
-        TIMER_SETUP 14 	; 14 scanlines spacing
+        TIMER_SETUP 20 	; 20 scanlines spacing
+        
+        lda #$05
+        cmp underlineindex
+        bne skip_fifth_line
+        sta WSYNC
+        sta WSYNC
+        jsr print_underline
+skip_fifth_line
         
         lda #$05
         jsr fill_card_a	; Fill Sprite A with card 5 data
@@ -225,10 +255,10 @@ skip_second_line
         
         sta WSYNC	; Set card 5&6 position
         SLEEP 40
-        lda #$00
+        lda #$30
         sta RESP0
         sta HMP0
-        lda #$00
+        lda #$d0
         sta RESP1
         sta HMP1
         sta WSYNC
@@ -240,26 +270,65 @@ skip_second_line
         
 	jsr print_card_ab	; Print card 5&6
         
-        TIMER_SETUP 14	; 14 scanlines spacing
+        TIMER_SETUP 20	; 20 scanlines spacing
+        
+        lda #$06
+        cmp underlineindex
+        bne skip_sixth_line
+        lda #$00
+        sta HMM0
+        sta WSYNC
+        SLEEP 70
+        sta HMOVE
+        sta WSYNC
+        jsr print_underline
+skip_sixth_line
+
+        lda #$07
+        cmp underlineindex
+        bne skip_seventh_line
+        lda #$c0
+        sta HMM0
+        sta WSYNC
+        SLEEP 50
+        STA RESM0
+        sta WSYNC
+        SLEEP 70
+        sta HMOVE
+        jsr print_underline
+skip_seventh_line
         
         lda #$07
         jsr fill_card_a	; Fill Sprite A with card 7 data
         
+        lda #$50
+        sta HMM0
         sta WSYNC	; Set card 7 position
         SLEEP 43
         lda #$d0
         sta RESP0
+        sta RESM0
         sta HMP0
         sta WSYNC
         SLEEP 70
         sta HMOVE
         
-        TIMER_WAIT	; End 14 scanlines
+        
+        TIMER_WAIT	; End 20 scanlines
         
         jsr print_card_a
         
-        TIMER_SETUP 29	; 29 scanlines spacing
-        TIMER_WAIT	; End 29 scanlines
+        TIMER_SETUP 28	; 28 scanlines spacing
+        
+        lda #$08
+        cmp underlineindex
+        bne skip_eigth_line
+        sta WSYNC
+        sta WSYNC
+        jsr print_underline
+skip_eigth_line
+
+        TIMER_WAIT	; End 28 scanlines
 
 	
 	lda #2		
@@ -269,6 +338,48 @@ skip_second_line
 	TIMER_SETUP 30	; Vblank
         
         jsr fill_cards	; Setup card indexes
+        
+        ; Controller stuff
+        
+        
+        lda SWCHA
+        and #$80
+        bne skip_right
+        ; Move right
+        lda #$03
+        sta underlineindex
+skip_right
+	lda SWCHA
+        and #$40
+        bne skip_left
+        ; Move left
+        lda #$02
+        sta underlineindex
+skip_left
+	lda SWCHA
+        and #$20
+        bne skip_down
+        ; Move left
+        lda #$04
+        sta underlineindex
+skip_down
+	lda SWCHA
+        and #$10
+        bne skip_up
+        ; Move left
+        lda #$01
+        sta underlineindex
+skip_up
+
+	lda INPT4
+        and #$80
+        bne skip_button
+        lda underlineindex
+        clc
+        adc #$04
+        sta underlineindex
+skip_button
+
         
         TIMER_WAIT	; End Vblank
 
