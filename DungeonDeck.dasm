@@ -10,13 +10,19 @@ sprite_height 	= $07
 sprite_y 	= $40
 sprite_x 	= $52
 sprite 		= $14
-cards_len 	= $08
+cards_len 	= $09
 
 deck_len	= 36
+empty_card	= $8B
 
 ; Var
         seg.u variables
 	org $80
+
+; Main
+framecounter 	byte
+gamestate	byte
+buttonstate	byte
         
 ; Temporary storage
 temp		byte
@@ -24,11 +30,12 @@ temp2 		byte
 temp3 		byte
 
 ; Card data
-cards		ds 8
-cardindxt 	ds 8
-cardindxn 	ds 8
+cards		ds 9 ; Add zero support
+cardindxt 	ds 9
+cardindxn 	ds 9
 cardasprite 	ds 7
 cardbsprite 	ds 7
+flashindex	byte
 
 ; Deck
 deckindex	byte
@@ -46,6 +53,15 @@ seed		ds 2
 
 init
 	CLEAN_START
+        
+        ; Init frame
+        lda #$00
+        sta framecounter
+        sta gamestate
+        sta buttonstate
+        
+        lda #$09
+        sta flashindex
   	
         ; Set seed
         lda #$76
@@ -66,6 +82,9 @@ init
         lda deck+3
         sta cards+3
         
+        lda #$04
+        sta deckindex
+        
         
         ; Setup Player
         lda #$49
@@ -77,11 +96,15 @@ init
         lda #$7A
         sta cards+7
         
+        ; Empty card
+        lda #empty_card
+        sta cards+8
+        
         ; Setup underline
         lda #%000110000
         sta NUSIZ0
         
-        lda #$00
+        lda #$03
         sta underlineindex
 
 new_frame
@@ -131,9 +154,9 @@ new_frame
 	jsr print_card_a	; Print card 0
         			; Takes 8 scanlines
           
-        TIMER_SETUP 20
+        TIMER_SETUP 21
         
-        lda #$01
+        lda #$00
         cmp underlineindex
         bne skip_first_line
         sta WSYNC
@@ -169,7 +192,7 @@ skip_first_line
        	
         TIMER_SETUP 20
         
-        lda #$02
+        lda #$01
         cmp underlineindex
         bne skip_second_line
         lda #$e0
@@ -181,7 +204,7 @@ skip_first_line
         jsr print_underline
 skip_second_line
         
-        lda #$03
+        lda #$02
         cmp underlineindex
         bne skip_third_line
         lda #$c0
@@ -220,7 +243,7 @@ skip_third_line
 
 	TIMER_SETUP 24
 
-        lda #$04
+        lda #$03
         cmp underlineindex
         bne skip_fourth_line
         sta WSYNC
@@ -238,9 +261,9 @@ skip_fourth_line
         			; Takes 8 scanlines
         
         
-        TIMER_SETUP 20 	; 20 scanlines spacing
+        TIMER_SETUP 21 	; 20 scanlines spacing
         
-        lda #$05
+        lda #$04
         cmp underlineindex
         bne skip_fifth_line
         sta WSYNC
@@ -272,7 +295,7 @@ skip_fifth_line
         
         TIMER_SETUP 20	; 20 scanlines spacing
         
-        lda #$06
+        lda #$05
         cmp underlineindex
         bne skip_sixth_line
         lda #$00
@@ -284,7 +307,7 @@ skip_fifth_line
         jsr print_underline
 skip_sixth_line
 
-        lda #$07
+        lda #$06
         cmp underlineindex
         bne skip_seventh_line
         lda #$c0
@@ -320,7 +343,7 @@ skip_seventh_line
         
         TIMER_SETUP 28	; 28 scanlines spacing
         
-        lda #$08
+        lda #$07
         cmp underlineindex
         bne skip_eigth_line
         sta WSYNC
@@ -340,45 +363,110 @@ skip_eigth_line
         jsr fill_cards	; Setup card indexes
         
         ; Controller stuff
+        ldx #$00
+        lda #$01
+        cmp gamestate
+        bne skip_state_one
+        ldx #$04
+skip_state_one
         
         
         lda SWCHA
         and #$80
         bne skip_right
         ; Move right
-        lda #$03
+        txa
+        clc
+        adc #$02
         sta underlineindex
 skip_right
 	lda SWCHA
         and #$40
         bne skip_left
         ; Move left
-        lda #$02
+        txa
+        clc
+        adc #$01
         sta underlineindex
 skip_left
 	lda SWCHA
         and #$20
         bne skip_down
         ; Move left
-        lda #$04
+        txa
+        clc
+        adc #$03
         sta underlineindex
 skip_down
 	lda SWCHA
         and #$10
         bne skip_up
         ; Move left
-        lda #$01
+        txa
+        clc
+        adc #$00
         sta underlineindex
 skip_up
 
 	lda INPT4
         and #$80
-        bne skip_button
+        bne no_push_button
+        
+        lda buttonstate
+        bne end_button
+        
+        lda #$01
+        sta buttonstate
+        
+        lda gamestate
+        bne skip_button_state_one
         lda underlineindex
-        clc
-        adc #$04
+        sta flashindex
+        lda #$01
+        sta gamestate
+        lda #$04
         sta underlineindex
-skip_button
+        jmp end_button
+        
+skip_button_state_one
+        ldx flashindex
+        lda cards,X
+        ldy underlineindex
+        sta cards,Y
+        
+        ldy deckindex
+        lda deck,Y
+        sta cards,X
+        iny
+        cpy deck_len
+        bcc deck_index_no_loop
+	ldy #$00
+deck_index_no_loop
+        sty deckindex
+        
+        lda #$00
+        sta gamestate
+        
+        lda #$08
+        sta flashindex
+        
+        lda #$03
+        sta underlineindex
+        
+	
+        jmp end_button
+no_push_button
+	lda #$00
+        sta buttonstate
+end_button
+
+
+
+	; End frame stuff
+        lda framecounter
+        clc 
+        adc #$01
+        sta framecounter
 
         
         TIMER_WAIT	; End Vblank
@@ -390,7 +478,17 @@ skip_button
 ; Fills cardasprite with the card index
 fill_card_a
 	sta temp3
-        ldx #$07
+        ldx #07
+	; Flashing stuff
+	cmp flashindex
+        bne fill_card_a_loop
+        lda #$10
+        and framecounter
+        beq fill_card_a_loop
+        lda #$08
+        sta temp3
+        
+        ;ldx #$07
 fill_card_a_loop	; Loop over the 7 lines in the sprite
 	dex
 
@@ -420,7 +518,15 @@ fill_card_a_loop	; Loop over the 7 lines in the sprite
 ; Fills cardbsprite with the card index
 fill_card_b
 	sta temp3
-        ldx #$07	
+        ldx #$07
+       	; Flashing stuff
+	cmp flashindex
+        bne fill_card_b_loop
+        lda #$10
+        and framecounter
+        beq fill_card_b_loop
+        lda #$08
+        sta temp3
 fill_card_b_loop	; Loop over the 7 lines in the sprite
 	dex
 
@@ -527,7 +633,7 @@ m7_loop
 ; fill_cards
 ; Converts cards array to cardinxt and cardinxn
 fill_cards
-	ldx #cards_len	; 8 cards
+	ldx #cards_len	; 9 cards
 fc_loop
 	dex
 	lda cards,x	; Load card index
@@ -717,7 +823,7 @@ icon_zero
         .byte #%00000101
         .byte #%00000111
 icon_one
-	.byte #%0000001
+	.byte #%00000001
         .byte #%00000001
         .byte #%00000001
         .byte #%00000001
