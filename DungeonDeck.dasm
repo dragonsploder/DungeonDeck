@@ -24,6 +24,8 @@ empty_card	= $8B
 framecounter 	byte
 gamestate	byte
 buttonstate	byte
+joyupstate	byte
+joydownstate	byte
         
 ; Temporary storage
 temp		byte
@@ -46,7 +48,7 @@ deckindex	byte
 deck		ds deck_len
 
 ; Underline
-underlineindex	ds 1
+underlineindex	byte
 
 ; Random Num Stuff
 seed		ds 2
@@ -63,6 +65,8 @@ init
         sta framecounter
         sta gamestate
         sta buttonstate
+        sta joyupstate
+        sta joydownstate
         
         lda #$09
         sta flashindex
@@ -368,17 +372,16 @@ skip_eigth_line
         
         ; Controller stuff
         ldx #$00
-        lda #$01
-        cmp gamestate
-        bne skip_state_one
+        lda underlineindex
+        cmp #$04
+        bcc skip_sector_one
         ldx #$04
-skip_state_one
+skip_sector_one
         
         
         lda SWCHA
         and #$80
         bne skip_right
-        ; Move right
         txa
         clc
         adc #$02
@@ -387,30 +390,83 @@ skip_right
 	lda SWCHA
         and #$40
         bne skip_left
-        ; Move left
         txa
         clc
         adc #$01
         sta underlineindex
 skip_left
+
+
 	lda SWCHA
         and #$20
-        bne skip_down
-        ; Move left
+        bne no_joy_down
+        
+        lda joydownstate
+        bne end_joy_down
+        
+        lda #$01
+        sta joydownstate
+        
+        lda underlineindex
+        cmp #$03
+        bne skip_joy_down_at_three
+        
+        lda #$04
+        sta underlineindex
+        jmp end_joy_down
+
+skip_joy_down_at_three
+	
         txa
         clc
         adc #$03
         sta underlineindex
-skip_down
+	
+        jmp end_joy_down
+no_joy_down
+	lda #$00
+        sta joydownstate
+end_joy_down
+        
+
+
+
+
+
 	lda SWCHA
         and #$10
-        bne skip_up
-        ; Move left
+        bne no_joy_up
+        
+        lda joyupstate
+        bne end_joy_up
+        
+        lda #$01
+        sta joyupstate
+        
+        lda underlineindex
+        cmp #$04
+        bne skip_joy_up_at_four
+        
+        lda #$03
+        sta underlineindex
+        jmp end_joy_up
+
+skip_joy_up_at_four
+	
         txa
         clc
         adc #$00
         sta underlineindex
-skip_up
+	
+        jmp end_joy_up
+no_joy_up
+	lda #$00
+        sta joyupstate
+end_joy_up
+        
+        
+        
+        
 
 	lda INPT4
         and #$80
@@ -428,8 +484,8 @@ skip_up
         sta flashindex
         lda #$01
         sta gamestate
-        lda #$04
-        sta underlineindex
+        ;lda #$04
+        ;sta underlineindex
         jmp end_button
         
 skip_button_state_one
@@ -454,8 +510,8 @@ deck_index_no_loop
         lda #$08
         sta flashindex
         
-        lda #$03
-        sta underlineindex
+        ;lda #$03
+        ;sta underlineindex
         
 	
         jmp end_button
