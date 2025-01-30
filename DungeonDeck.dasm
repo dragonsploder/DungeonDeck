@@ -5,8 +5,8 @@
         include "xmacro.h"
         
 ; Defines
-bg_color 	= $A6
-underline_color	= $80
+bg_color 	= $8E
+underline_color	= $00
 sprite_height 	= $07
 sprite_y 	= $40
 sprite_x 	= $52
@@ -757,11 +757,11 @@ r_skip
         
 ; icons
 icon_colors
-	.byte #$F0 ; Sword
-        .byte #$40 ; Potion
+	.byte #$22 ; Sword
+        .byte #$52 ; Potion
         .byte #$C2 ; Sheild
-        .byte #$18 ; Enemy
-        .byte #$2E ; Player
+        .byte #$42 ; Enemy
+        .byte #$F2 ; Player
         .byte #$0E ; The rest
         .byte #$0E
         .byte #$0E
