@@ -14,7 +14,11 @@ sprite 		= $14
 cards_len 	= $09
 
 deck_len	= 36
-empty_card	= $8B
+true_empty_card	= $9B
+empty_card	= $8A
+left_hand_card	= $5A
+right_hand_card = $6A
+backpack_card 	= $7A
 
 ; Var
         seg.u variables
@@ -72,7 +76,7 @@ init
         sta flashindex
   	
         ; Set seed
-        lda #$76
+        lda #$60
         sta seed
         lda #$01
         sta seed+1
@@ -97,15 +101,15 @@ init
         ; Setup Player
         lda #$49
         sta cards+4
-        lda #$5A
+        lda #left_hand_card
         sta cards+5
-        lda #$6A
+        lda #right_hand_card
         sta cards+6
-        lda #$7A
+        lda #backpack_card
         sta cards+7
         
         ; Empty card
-        lda #empty_card
+        lda #true_empty_card
         sta cards+8
         
         ; Setup underline
@@ -123,6 +127,8 @@ new_frame
         
         
         TIMER_SETUP 37  ; Vblank
+        
+        jsr do_joystick ; Do joystick stuff up here for time
         
         
         sta WSYNC	; Set sprite A position
@@ -370,6 +376,214 @@ skip_eigth_line
         
         jsr fill_cards	; Setup card indexes
         
+;	jsr do_joystick
+        
+
+	lda INPT4
+        and #$80
+        beq cont1
+        jmp no_push_button
+cont1        
+        lda buttonstate
+        beq cont2
+        jmp end_button
+cont2
+        
+        lda #$01
+        sta buttonstate
+        
+        lda gamestate
+        bne skip_button_state_one
+        
+              
+        ; GAME LOGIC
+        
+        ; STATE ZERO
+        
+        ldx underlineindex
+        lda cards,X
+        cmp #empty_card		; Can't grab empty card
+        bne cont3 
+        jmp end_button	
+cont3        
+        
+        
+        
+        lda underlineindex
+        sta flashindex
+        lda #$01
+        sta gamestate
+        jmp end_button
+        
+        ; END STATE ZERO
+        
+        ; STATE ONE
+        
+skip_button_state_one
+	
+        lda flashindex
+        cmp #$04
+        bcc card_pick_sector_zero
+        jmp card_pick_sector_one
+        
+
+card_pick_sector_zero
+	
+        
+	lda underlineindex
+        cmp #$04
+        beq card_place_on_player
+        
+        cmp #$05
+        beq card_place_on_left
+        
+        cmp #$06
+        beq card_place_on_right
+        
+        cmp #$07
+        beq card_place_on_back
+        
+
+
+	jmp card_pick_end_no_action
+        
+        
+card_place_on_player
+	jmp card_pick_end_no_action
+        
+
+card_place_on_left
+card_place_on_right
+card_place_on_back
+	jmp card_place
+ 
+card_pick_sector_one
+	
+        ;lda underlineindex
+        ;cmp #$04
+        lda #$04
+        cmp underlineindex
+        bcc card_pick_end_no_action ; Card placed back in sector one
+        
+        
+        ldx flashindex
+        lda cards,X
+        and #$F0 		    ; Grab Card Type
+        
+        cmp #$00		    ; Only sword can be used in the case
+        bne card_pick_end_no_action
+        
+        cpx #$07	            ; Cannot come from backpack
+        beq card_pick_end_no_action 
+                
+        lda cards,X
+        and #$0F
+        sta temp
+        
+        ldy underlineindex
+        lda cards,Y
+        and #$F0
+        cmp #$30
+        bne card_pick_end_no_action  ; Must be placed on monster
+        
+        ; SWORD ATTACK
+        
+        lda cards,Y			; Get monster hp
+        and #$0F
+	
+        sec
+        sbc temp
+        bmi monster_killed
+        
+        clc
+        adc #$30			; Remake monster card
+        sta cards,Y
+        
+        jmp replace_hand
+monster_killed
+	
+        lda #empty_card
+        sta cards,Y
+
+replace_hand
+	ldx flashindex
+        cpx #$05
+        beq replace_left
+        
+        lda #right_hand_card
+        sta cards,X
+        
+        jmp card_pick_end_no_action
+replace_left
+
+        lda #left_hand_card
+        sta cards,X
+        
+        jmp card_pick_end_no_action
+        
+
+
+
+card_place:			    ; Move selection to location
+	ldx flashindex
+        lda cards,X
+        ldy underlineindex
+        sta cards,Y
+
+card_place_replace
+        lda #empty_card
+        sta cards,X
+        
+card_pick_end_no_action:
+        
+;        ldx flashindex
+;        lda cards,X
+;        ldy underlineindex
+;        sta cards,Y
+;        
+;        ldy deckindex
+;        lda deck,Y
+;        sta cards,X
+;        iny
+;        cpy deck_len
+;        bcc deck_index_no_loop
+;	ldy #$00
+;deck_index_no_loop
+;        sty deckindex
+        
+        
+
+        lda #$00
+        sta gamestate
+        
+        lda #$08
+        sta flashindex
+        
+        ; END STATE ONE
+        
+        ; END GAME LOGIC
+        
+        jmp end_button
+no_push_button
+	lda #$00
+        sta buttonstate
+end_button
+
+
+
+	; End frame stuff
+        lda framecounter
+        clc 
+        adc #$01
+        sta framecounter
+	
+        
+        TIMER_WAIT	; End Vblank
+
+        jmp new_frame
+        
+; do_joystick
+do_joystick
         ; Controller stuff
         ldx #$00
         lda underlineindex
@@ -427,10 +641,6 @@ no_joy_down
 	lda #$00
         sta joydownstate
 end_joy_down
-        
-
-
-
 
 
 	lda SWCHA
@@ -465,73 +675,7 @@ no_joy_up
 end_joy_up
         
         
-        
-        
-
-	lda INPT4
-        and #$80
-        bne no_push_button
-        
-        lda buttonstate
-        bne end_button
-        
-        lda #$01
-        sta buttonstate
-        
-        lda gamestate
-        bne skip_button_state_one
-        lda underlineindex
-        sta flashindex
-        lda #$01
-        sta gamestate
-        ;lda #$04
-        ;sta underlineindex
-        jmp end_button
-        
-skip_button_state_one
-        ldx flashindex
-        lda cards,X
-        ldy underlineindex
-        sta cards,Y
-        
-        ldy deckindex
-        lda deck,Y
-        sta cards,X
-        iny
-        cpy deck_len
-        bcc deck_index_no_loop
-	ldy #$00
-deck_index_no_loop
-        sty deckindex
-        
-        lda #$00
-        sta gamestate
-        
-        lda #$08
-        sta flashindex
-        
-        ;lda #$03
-        ;sta underlineindex
-        
-	
-        jmp end_button
-no_push_button
-	lda #$00
-        sta buttonstate
-end_button
-
-
-
-	; End frame stuff
-        lda framecounter
-        clc 
-        adc #$01
-        sta framecounter
-
-        
-        TIMER_WAIT	; End Vblank
-
-        jmp new_frame
+        rts
 
 ; fillcard_a
 ; A = card index
@@ -821,6 +965,7 @@ icon_colors
         .byte #$0E ; The rest
         .byte #$0E
         .byte #$0E
+        .byte #$00
 icon_types
 icon_sword
 	.byte #%01000000 
@@ -886,6 +1031,14 @@ icon_backpack
         .byte #%10100000
         .byte #%10100000
         .byte #%11000000
+icon_x
+	.byte #%10100000
+        .byte #%10100000
+        .byte #%01000000
+        .byte #%01000000
+        .byte #%01000000
+        .byte #%10100000
+        .byte #%10100000
 icon_blank
 	.byte #%00000000 
         .byte #%00000000
@@ -977,7 +1130,7 @@ icon_nine
         .byte #%00000101
         .byte #%00000101
         .byte #%00000111
-icon_x
+icon_x2
 	.byte #%00000101
         .byte #%00000101
         .byte #%00000010
