@@ -11,7 +11,7 @@ sprite_height 	= $07
 sprite_y 	= $40
 sprite_x 	= $52
 sprite 		= $14
-cards_len 	= $09
+cards_len 	= $08
 
 deck_len	= 36
 true_empty_card	= $9B
@@ -19,6 +19,11 @@ empty_card	= $8A
 left_hand_card	= $5A
 right_hand_card = $6A
 backpack_card 	= $7A
+
+sword_type	= $00
+potion_type	= $10
+sheild_type	= $20
+enemy_type	= $30
 
 ; Var
         seg.u variables
@@ -76,7 +81,7 @@ init
         sta flashindex
   	
         ; Set seed
-        lda #$60
+        lda #$62
         sta seed
         lda #$01
         sta seed+1
@@ -97,7 +102,13 @@ init
         lda #$04
         sta deckindex
         
-        
+        ; Fill empty card
+        lda #true_empty_card
+        sta cardindxt+8 
+        sta cardindxn+8
+        lda #bg_color
+        sta cardindxc+8
+                 
         ; Setup Player
         lda #$49
         sta cards+4
@@ -128,7 +139,7 @@ new_frame
         
         TIMER_SETUP 37  ; Vblank
         
-        jsr do_joystick ; Do joystick stuff up here for time
+        jsr fill_cards
         
         
         sta WSYNC	; Set sprite A position
@@ -365,6 +376,8 @@ skip_seventh_line
         jsr print_underline
 skip_eigth_line
 
+	jsr do_joystick ; Do joystick stuff up here for time
+
         TIMER_WAIT	; End 28 scanlines
 
 	
@@ -374,7 +387,7 @@ skip_eigth_line
         
 	TIMER_SETUP 30	; Vblank
         
-        jsr fill_cards	; Setup card indexes
+        
         
 ;	jsr do_joystick
         
@@ -453,9 +466,84 @@ card_place_on_player
         
 
 card_place_on_left
+        lda cards+5
+        cmp #left_hand_card
+        beq check_monster_empty_card
+        jmp check_shield_full_card
 card_place_on_right
+        lda cards+6
+        cmp #right_hand_card
+        beq check_monster_empty_card
+        jmp check_shield_full_card
 card_place_on_back
-	jmp card_place
+        lda cards+7
+        cmp #backpack_card
+        beq check_monster_empty_card
+        jmp card_pick_end_no_action
+
+
+check_monster_empty_card
+	ldx flashindex
+        lda cards,X
+        and #$F0
+        cmp #enemy_type
+        ;beq card_pick_end_no_action
+        bne cont4
+        jmp card_pick_end_no_action
+cont4
+        jmp card_place
+        
+	
+check_shield_full_card		; Only case here is a monster on a sheild
+	and #$F0
+        cmp #sheild_type
+        ;bne card_pick_end_no_action
+        beq cont5
+	jmp card_pick_end_no_action
+cont5
+        ldx flashindex
+        lda cards,X
+        and #$F0
+        cmp #enemy_type
+        ;bne card_pick_end_no_action
+        beq cont6
+	jmp card_pick_end_no_action
+cont6
+
+	; SHIELD BLOCK
+        
+        lda cards,X
+        and #$0F
+        sta temp		; Monster value
+        ldy underlineindex
+        lda cards,Y		; Shield value
+        and #$0F
+        sec
+        sbc temp		; Shield - Monster
+        bmi monster_attack	; Monster won
+        
+        ora #sheild_type
+        sta cards,Y
+        
+	lda #empty_card
+        sta cards,X
+        
+        jmp card_pick_end_no_action
+
+monster_attack
+	sta temp
+        lda #$00
+        sec
+        sbc temp
+        sta temp
+
+        jsr replace_hand_underline
+        
+        ldx flashindex
+        lda #empty_card
+        sta cards,X
+        lda temp
+        jmp attack_player
  
 card_pick_sector_one
 	
@@ -470,7 +558,7 @@ card_pick_sector_one
         lda cards,X
         and #$F0 		    ; Grab Card Type
         
-        cmp #$00		    ; Only sword can be used in the case
+        cmp #sword_type		    ; Only sword can be used in the case
         bne card_pick_end_no_action
         
         cpx #$07	            ; Cannot come from backpack
@@ -499,32 +587,36 @@ card_pick_sector_one
         adc #$30			; Remake monster card
         sta cards,Y
         
-        jmp replace_hand
+        ;jmp replace_hand
+        jsr replace_hand_flash
+        jmp card_pick_end_no_action
+        
 monster_killed
 	
         lda #empty_card
         sta cards,Y
 
-replace_hand
-	ldx flashindex
-        cpx #$05
-        beq replace_left
-        
-        lda #right_hand_card
-        sta cards,X
-        
-        jmp card_pick_end_no_action
-replace_left
-
-        lda #left_hand_card
-        sta cards,X
+	jsr replace_hand_flash
         
         jmp card_pick_end_no_action
         
+attack_player
+	sta temp
+	lda cards+4
+        sec
+        sbc temp
+        bmi player_death
+        sta cards+4
+        jmp card_pick_end_no_action
+        
+
+player_death
+	; TODO
+        lda #empty_card
+        sta cards+4
 
 
-
-card_place:			    ; Move selection to location
+card_place			    ; Move selection to location
 	ldx flashindex
         lda cards,X
         ldy underlineindex
@@ -534,7 +626,7 @@ card_place_replace
         lda #empty_card
         sta cards,X
         
-card_pick_end_no_action:
+card_pick_end_no_action
         
 ;        ldx flashindex
 ;        lda cards,X
@@ -581,6 +673,43 @@ end_button
         TIMER_WAIT	; End Vblank
 
         jmp new_frame
+        
+        
+; replace_hand
+replace_hand_flash
+	ldx flashindex
+        cpx #$05
+        beq replace_left_flash
+        
+        lda #right_hand_card
+        sta cards,X
+        
+        jmp rh_end_flash
+replace_left_flash
+
+        lda #left_hand_card
+        sta cards,X
+
+rh_end_flash
+        rts
+        
+; replace_hand
+replace_hand_underline
+	ldx underlineindex
+        cpx #$05
+        beq replace_left_underline
+        
+        lda #right_hand_card
+        sta cards,X
+        
+        jmp rh_end_underline
+replace_left_underline
+
+        lda #left_hand_card
+        sta cards,X
+
+rh_end_underline
+        rts
         
 ; do_joystick
 do_joystick
@@ -831,22 +960,22 @@ print_underline
 ; mult7
 ; A = A * 7
 mult7
-	tax
+	tay
         lda #$00
-        cpx #$00
+        cpy #$00
         bne m7_loop
         rts
 m7_loop
 	clc
 	adc #$07
-        dex
+        dey
         bne m7_loop
         rts
         
 ; fill_cards
 ; Converts cards array to cardinxt and cardinxn
 fill_cards
-	ldx #cards_len	; 9 cards
+	ldx #cards_len	; 8 cards
 fc_loop
 	dex
 	lda cards,x	; Load card index
@@ -859,16 +988,16 @@ fc_loop
         lda icon_colors,Y
         sta cardindxc,X
         lda temp
-        stx temp
+        ;stx temp
         jsr mult7	; Each sprite is 7 bytes
-        ldx temp	; so multiply each index by 7
+        ;ldx temp	; so multiply each index by 7
 	sta cardindxt,x	; Store actual offset for type
 
         lda cards,x
         and #$0F	; Get the low 4 bites
-        stx temp
+        ;stx temp
         jsr mult7	; See above
-        ldx temp
+        ;ldx temp
 	sta cardindxn,x	; Store actual offset for number
         cpx #$00
         bne fc_loop
