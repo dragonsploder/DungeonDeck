@@ -1,4 +1,4 @@
-; Boilerplate
+and; Boilerplate
 	processor 6502
         include "vcs.h"
         include "macro.h"
@@ -462,6 +462,20 @@ card_pick_sector_zero
         
         
 card_place_on_player
+        ldy flashindex
+        lda cards,Y
+        and #$F0
+        tax
+
+	lda cards,Y
+        and #$0F
+        
+        cpx #$30
+        bne cont4
+        ldx #empty_card
+        stx cards,Y
+        jmp attack_player
+cont4
 	jmp card_pick_end_no_action
         
 
@@ -488,9 +502,9 @@ check_monster_empty_card
         and #$F0
         cmp #enemy_type
         ;beq card_pick_end_no_action
-        bne cont4
+        bne cont5
         jmp card_pick_end_no_action
-cont4
+cont5
         jmp card_place
         
 	
@@ -498,17 +512,17 @@ check_shield_full_card		; Only case here is a monster on a sheild
 	and #$F0
         cmp #sheild_type
         ;bne card_pick_end_no_action
-        beq cont5
+        beq cont6
 	jmp card_pick_end_no_action
-cont5
+cont6
         ldx flashindex
         lda cards,X
         and #$F0
         cmp #enemy_type
         ;bne card_pick_end_no_action
-        beq cont6
+        beq cont7
 	jmp card_pick_end_no_action
-cont6
+cont7
 
 	; SHIELD BLOCK
         
@@ -551,7 +565,7 @@ card_pick_sector_one
         ;cmp #$04
         lda #$04
         cmp underlineindex
-        bcc card_pick_end_no_action ; Card placed back in sector one
+        bcc hand_card_swap ; Card placed back in sector one
         
         
         ldx flashindex
@@ -591,6 +605,29 @@ card_pick_sector_one
         jsr replace_hand_flash
         jmp card_pick_end_no_action
         
+hand_card_swap
+	ldx underlineindex
+        lda cards,X
+        and #$0F
+        cmp #$0A
+        bne card_pick_end_no_action
+        
+        ldy flashindex
+        lda cards,Y
+        sta cards,X
+        
+        tya  
+        asl
+        asl
+        asl
+        asl
+        ora #$0A
+        sta cards,Y
+	
+        
+        
+        jmp card_pick_end_no_action
+        
 monster_killed
 	
         lda #empty_card
@@ -614,6 +651,7 @@ player_death
 	; TODO
         lda #empty_card
         sta cards+4
+        jmp card_pick_end_no_action
 
 
 card_place			    ; Move selection to location
