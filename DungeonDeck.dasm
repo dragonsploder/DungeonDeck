@@ -13,7 +13,7 @@ sprite_x 	= $52
 sprite 		= $14
 cards_len 	= $08
 
-deck_len	= 36
+deck_len	= 45
 true_empty_card	= $9B
 empty_card	= $8A
 left_hand_card	= $5A
@@ -81,7 +81,7 @@ init
         sta flashindex
   	
         ; Set seed
-        lda #$62
+        lda #$55
         sta seed
         lda #$01
         sta seed+1
@@ -90,17 +90,17 @@ init
         jsr shuffle_deck
 	
         ; Fill cards with data
-        lda deck+0
+        lda #empty_card
         sta cards+0
-        lda deck+1
         sta cards+1
-        lda deck+2
         sta cards+2
-        lda deck+3
         sta cards+3
         
-        lda #$04
-        sta deckindex
+        ldy #deck_len
+        dey
+        sty deckindex
+        
+        jsr new_room
         
         ; Fill empty card
         lda #true_empty_card
@@ -389,7 +389,6 @@ skip_eigth_line
         
         
         
-;	jsr do_joystick
         
 
 	lda INPT4
@@ -618,7 +617,10 @@ hand_card_swap
         lda cards,X
         and #$0F
         cmp #$0A
-        bne card_pick_end_no_action
+        ;bne 
+        beq cont11
+        jmp card_pick_end_no_action
+cont11
         
         ldy flashindex
         lda cards,Y
@@ -677,12 +679,15 @@ potion_heal_sector_one
 	lda #backpack_card
         sta cards+7
 potion_heal
+	lda temp
+        and #$0F
+        sta temp
         lda cards+4	; Player
         and #$0F
 	clc
         adc temp
         cmp #$0a
-        and #$40
+        ora #$40
         sta cards+4
         bcc card_pick_end_no_action
         lda #$49
@@ -710,23 +715,6 @@ card_place_replace
         sta cards,X
         
 card_pick_end_no_action
-        
-;        ldx flashindex
-;        lda cards,X
-;        ldy underlineindex
-;        sta cards,Y
-;        
-;        ldy deckindex
-;        lda deck,Y
-;        sta cards,X
-;        iny
-;        cpy deck_len
-;        bcc deck_index_no_loop
-;	ldy #$00
-;deck_index_no_loop
-;        sty deckindex
-        
-        
 
         lda #$00
         sta gamestate
@@ -742,9 +730,25 @@ card_pick_end_no_action
 no_push_button
 	lda #$00
         sta buttonstate
+        ; Room Check (do it here for time)
+        ldy #$00
+       	ldx #$05
+rc_loop
+	dex
+        
+        lda cards,X
+        cmp #empty_card
+        bne rc_loop_end
+	iny
+rc_loop_end
+        cpx #$00
+        bne rc_loop
+        
+        cpy #$03
+        bne end_button
+        jsr new_room
+        
 end_button
-
-
 
 	; End frame stuff
         lda framecounter
@@ -887,6 +891,31 @@ no_joy_up
 end_joy_up
         
         
+        rts
+
+; new_room
+new_room
+	ldx #$05
+nr_loop
+	dex
+        
+        lda cards,X
+        cmp #empty_card
+        bne nr_loop_end
+        ldy deckindex
+        lda deck,Y
+        sta cards,X
+        
+        dey
+        sty deckindex
+        bpl nr_loop_end
+        ldy #deck_len
+        dey
+        sty deckindex
+
+nr_loop_end
+        cpx #$00
+        bne nr_loop
         rts
 
 ; fillcard_a
@@ -1363,6 +1392,7 @@ deck_start_layout
 	HEX 01 02 03 04 05 06 07 08 09
         HEX 11 12 13 14 15 16 17 18 19
         HEX 21 22 23 24 25 26 27 28 29
+        HEX 31 32 33 34 35 36 37 38 39
         HEX 31 32 33 34 35 36 37 38 39
      
      
