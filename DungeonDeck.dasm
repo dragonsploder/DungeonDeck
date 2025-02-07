@@ -573,10 +573,15 @@ card_pick_sector_one
         and #$F0 		    ; Grab Card Type
         
         cmp #sword_type		    ; Only sword can be used in the case
-        bne card_pick_end_no_action
-        
+        ;bne 
+        beq cont8
+        jmp card_pick_end_no_action
+cont8        
         cpx #$07	            ; Cannot come from backpack
-        beq card_pick_end_no_action 
+        ;beq 
+        bne cont9
+    	jmp card_pick_end_no_action 
+cont9
                 
         lda cards,X
         and #$0F
@@ -586,7 +591,10 @@ card_pick_sector_one
         lda cards,Y
         and #$F0
         cmp #$30
-        bne card_pick_end_no_action  ; Must be placed on monster
+        ;bne 
+        beq cont10 
+        jmp card_pick_end_no_action  ; Must be placed on monster
+cont10
         
         ; SWORD ATTACK
         
@@ -614,6 +622,14 @@ hand_card_swap
         
         ldy flashindex
         lda cards,Y
+        sta temp
+        ; Potion check
+        and #$F0
+        cmp #$10
+        beq potion_heal_sector_one
+        lda temp
+        
+        
         sta cards,X
         
         tya  
@@ -653,11 +669,40 @@ player_death
         sta cards+4
         jmp card_pick_end_no_action
 
+potion_heal_from_sector_zero
+	lda #empty_card
+        sta cards,X
+        jmp potion_heal
+potion_heal_sector_one
+	lda #backpack_card
+        sta cards+7
+potion_heal
+        lda cards+4	; Player
+        and #$0F
+	clc
+        adc temp
+        cmp #$0a
+        and #$40
+        sta cards+4
+        bcc card_pick_end_no_action
+        lda #$49
+        sta cards+4
+        jmp card_pick_end_no_action
 
 card_place			    ; Move selection to location
 	ldx flashindex
-        lda cards,X
         ldy underlineindex
+        lda cards,X
+        sta temp
+        ;potion check
+        and #$F0
+        cmp #$10
+        bne rest_of_card_place
+        cpy #$07	; Backpack
+        bne potion_heal_from_sector_zero
+
+rest_of_card_place
+        lda temp
         sta cards,Y
 
 card_place_replace
