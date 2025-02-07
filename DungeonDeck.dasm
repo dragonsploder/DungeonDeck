@@ -81,7 +81,7 @@ init
         sta flashindex
   	
         ; Set seed
-        lda #$55
+        lda #$56
         sta seed
         lda #$01
         sta seed+1
@@ -534,6 +534,7 @@ cont7
         sec
         sbc temp		; Shield - Monster
         bmi monster_attack	; Monster won
+        beq monster_attack
         
         ora #sheild_type
         sta cards,Y
@@ -603,6 +604,7 @@ cont10
         sec
         sbc temp
         bmi monster_killed
+        beq monster_killed
         
         clc
         adc #$30			; Remake monster card
