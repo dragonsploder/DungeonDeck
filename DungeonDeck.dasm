@@ -1,4 +1,4 @@
-and; Boilerplate
+; Boilerplate
 	processor 6502
         include "vcs.h"
         include "macro.h"
@@ -35,6 +35,7 @@ gamestate	byte
 buttonstate	byte
 joyupstate	byte
 joydownstate	byte
+switchrunstate  byte
         
 ; Temporary storage
 temp		byte
@@ -55,6 +56,7 @@ flashindex	byte
 ; Deck
 deckindex	byte
 deck		ds deck_len
+cardsinplay	byte
 
 ; Underline
 underlineindex	byte
@@ -76,17 +78,19 @@ init
         sta buttonstate
         sta joyupstate
         sta joydownstate
+        sta switchrunstate
         
         lda #$09
         sta flashindex
   	
         ; Set seed
-        lda #$56
+        lda #$74
         sta seed
         lda #$01
         sta seed+1
         
         jsr fill_deck
+        jsr shuffle_deck
         jsr shuffle_deck
 	
         ; Fill cards with data
@@ -122,6 +126,9 @@ init
         ; Empty card
         lda #true_empty_card
         sta cards+8
+        
+        lda #$04
+        sta cardsinplay
         
         ; Setup underline
         lda #%000110000
@@ -389,6 +396,45 @@ skip_eigth_line
         
         
         
+        ; Check Switches
+        lda SWCHB
+        and #%00000010
+        cmp #%00000010
+        beq reset_game_select
+        lda switchrunstate
+        cmp #$00
+        bne skip_game_select
+        lda cardsinplay
+        cmp #$04
+        bne skip_game_select
+        ; Game Select Used as run
+        ; Check if we can run
+        
+        
+        ; Sub 2 hp
+        lda cards+4
+        and #$0F
+        sec
+        sbc #$02
+        ; Do a branch for death check
+        ora #$40
+        sta cards+4
+        
+        jsr put_cards_back
+        jsr new_room
+        
+        
+        lda #$01
+        sta switchrunstate
+ 	jmp skip_game_select
+        
+reset_game_select
+	lda #$00
+        sta switchrunstate
+        
+skip_game_select
+        
+        
         
 
 	lda INPT4
@@ -473,6 +519,7 @@ card_place_on_player
         bne cont4
         ldx #empty_card
         stx cards,Y
+        jsr count_card_usage
         jmp attack_player
 cont4
 	jmp card_pick_end_no_action
@@ -504,6 +551,7 @@ check_monster_empty_card
         bne cont5
         jmp card_pick_end_no_action
 cont5
+	jsr count_card_usage
         jmp card_place
         
 	
@@ -524,6 +572,7 @@ cont6
 cont7
 
 	; SHIELD BLOCK
+        jsr count_card_usage
         
         lda cards,X
         and #$0F
@@ -676,6 +725,7 @@ player_death
 potion_heal_from_sector_zero
 	lda #empty_card
         sta cards,X
+        jsr count_card_usage
         jmp potion_heal
 potion_heal_sector_one
 	lda #backpack_card
@@ -895,6 +945,31 @@ end_joy_up
         
         rts
 
+; put_cards_back
+put_cards_back
+	ldy deckindex
+        ldx #$04
+pc_loop
+       	dex 
+        iny
+        cmp #(deck_len - 1)
+        bne pc_cont
+        ldy #$00
+pc_cont
+	lda cards,X
+        sta deck,Y
+        cpx #$00
+        bne pc_loop
+        
+        
+        
+        lda #empty_card
+        sta cards+0
+        sta cards+1
+        sta cards+2
+        sta cards+3
+        rts
+
 ; new_room
 new_room
 	ldx #$05
@@ -905,8 +980,20 @@ nr_loop
         cmp #empty_card
         bne nr_loop_end
         ldy deckindex
+nr_loop_retry
         lda deck,Y
+        cmp #$00
+        bne nr_loop_cont
+        dey
+	bne nr_loop_retry_skip
+        ldy #deck_len
+nr_loop_retry_skip
+        jmp nr_loop_retry
+
+nr_loop_cont
         sta cards,X
+        lda #$00
+        sta deck,Y
         
         dey
         sty deckindex
@@ -918,6 +1005,16 @@ nr_loop
 nr_loop_end
         cpx #$00
         bne nr_loop
+        
+        lda #$04
+        sta cardsinplay
+        rts
+        
+; count_card_usage
+count_card_usage
+	ldx cardsinplay
+        dex
+        stx cardsinplay
         rts
 
 ; fillcard_a
@@ -1394,8 +1491,8 @@ deck_start_layout
 	HEX 01 02 03 04 05 06 07 08 09
         HEX 11 12 13 14 15 16 17 18 19
         HEX 21 22 23 24 25 26 27 28 29
-        HEX 31 32 33 34 35 36 37 38 39
-        HEX 31 32 33 34 35 36 37 38 39
+        HEX 31 32 33 34 35 35 36 36 36
+        HEX 37 37 37 38 38 38 39 39 39
      
      
 ; Vectors
