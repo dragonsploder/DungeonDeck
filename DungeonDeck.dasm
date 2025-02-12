@@ -146,6 +146,38 @@ new_frame
         lsr SWCHB	; test Game Reset switch
         bcc init	; reset?
         
+        ; Check tv type switch
+        lda SWCHB
+        and #%00001000
+        cmp #%00001000
+        beq normal_frame
+        
+        ; Print Score board
+        VERTICAL_SYNC
+        TIMER_SETUP 37
+        TIMER_WAIT
+        
+        lda #$00
+        sta VBLANK	; turn off VBLANK
+        
+        ldy #bg_color   ; load bg color
+	sty COLUBK	; set bg color
+        
+        TIMER_SETUP 192
+        TIMER_WAIT
+        
+        
+       	lda #2		
+        sta VBLANK	; turn on VBLANK
+        
+        
+	TIMER_SETUP 30	; Vblank
+        TIMER_WAIT
+        
+        jmp new_frame
+	
+normal_frame
+        
         VERTICAL_SYNC
         
         
