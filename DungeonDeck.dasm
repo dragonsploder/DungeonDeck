@@ -24,6 +24,7 @@ sword_type	= $00
 potion_type	= $10
 sheild_type	= $20
 enemy_type	= $30
+player_type 	= $40
 
 ; Var
         seg.u variables
@@ -36,6 +37,7 @@ buttonstate	byte
 joyupstate	byte
 joydownstate	byte
 switchrunstate  byte
+score		byte
         
 ; Temporary storage
 temp		byte
@@ -57,6 +59,7 @@ flashindex	byte
 deckindex	byte
 deck		ds deck_len
 cardsinplay	byte
+cardsleft	byte
 
 ; Underline
 underlineindex	byte
@@ -79,6 +82,7 @@ init
         sta joyupstate
         sta joydownstate
         sta switchrunstate
+        sta score
         
         lda #$09
         sta flashindex
@@ -101,6 +105,7 @@ init
         sta cards+3
         
         ldy #deck_len
+        sta cardsleft
         dey
         sty deckindex
         
@@ -394,8 +399,12 @@ skip_eigth_line
         
 	TIMER_SETUP 30	; Vblank
         
+        lda gamestate
+        cmp #$03
+        bne player_not_dead
+ 	jmp end_button
         
-        
+player_not_dead       
         ; Check Switches
         lda SWCHB
         and #%00000010
@@ -417,6 +426,11 @@ skip_eigth_line
         sec
         sbc #$02
         ; Do a branch for death check
+        beq cont
+        bpl cont0
+cont
+	jmp player_death
+cont0
         ora #$40
         sta cards+4
         
@@ -708,10 +722,13 @@ monster_killed
         
 attack_player
 	sta temp
-	lda cards+4
+	lda cards+4 
+        and #$0F
         sec
         sbc temp
         bmi player_death
+        beq player_death
+        ora #player_type
         sta cards+4
         jmp card_pick_end_no_action
         
@@ -720,7 +737,9 @@ player_death
 	; TODO
         lda #empty_card
         sta cards+4
-        jmp card_pick_end_no_action
+        lda #$03
+        sta gamestate
+        jmp end_button
 
 potion_heal_from_sector_zero
 	lda #empty_card
