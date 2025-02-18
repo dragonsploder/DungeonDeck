@@ -14,6 +14,7 @@ sprite 		= $14
 cards_len 	= $08
 
 deck_len	= 45
+deck_len_hex	= $45
 true_empty_card	= $9B
 empty_card	= $8A
 left_hand_card	= $5A
@@ -88,7 +89,7 @@ init
         sta flashindex
   	
         ; Set seed
-        lda #$74
+        lda #$73
         sta seed
         lda #$01
         sta seed+1
@@ -104,8 +105,9 @@ init
         sta cards+2
         sta cards+3
         
+        ldy #deck_len_hex
+        sty cardsleft		
         ldy #deck_len
-        sta cardsleft
         dey
         sty deckindex
         
@@ -150,8 +152,9 @@ new_frame
         lda SWCHB
         and #%00001000
         cmp #%00001000
-        beq normal_frame
-        
+        bne data_frame
+        jmp normal_frame
+data_frame       
         ; Print Score board
         VERTICAL_SYNC
         TIMER_SETUP 37
@@ -163,7 +166,77 @@ new_frame
         ldy #bg_color   ; load bg color
 	sty COLUBK	; set bg color
         
-        TIMER_SETUP 192
+        TIMER_SETUP 50
+        
+        TIMER_WAIT
+        
+        TIMER_SETUP 142
+
+	lda #%00000010
+        sta CTRLPF
+        
+        lda cardsleft
+        and #$0F
+        jsr mult5
+        sta temp
+        
+        clc
+        adc #$05
+        tax
+
+	ldy #$05
+score_fill_loop
+	dex
+        dey
+	lda score_bitmap,X
+	sta cardasprite,Y
+        cpx temp
+        bne score_fill_loop
+        
+        lda cardsleft
+        ;and #$F0
+        lsr
+        lsr
+        lsr
+        lsr
+        jsr mult5
+        sta temp
+        
+        clc
+        adc #$05
+        tax
+
+	ldy #$05
+score_fill_loop2
+	dex
+        dey
+	lda score_bitmap,X
+        asl
+        asl
+        asl
+        asl
+        ora cardasprite,Y
+	sta cardasprite,Y
+        cpx temp
+        bne score_fill_loop2
+        
+        ldx #$05
+score_loop
+	dex
+	ldy #$05
+score_loop_small
+        sta WSYNC
+        lda cardasprite,X
+        sta PF1
+        lda #$00
+        SLEEP 40
+        sta PF1
+        dey
+        bne score_loop_small
+        cpx #$00
+	bne score_loop
+	
+        
         TIMER_WAIT
         
         
@@ -213,7 +286,7 @@ normal_frame
         
         
         
-        TIMER_SETUP 20  ; 20 scanlines before first card
+        TIMER_SETUP 16  ; 20 scanlines before first card
         
         lda #$00
         jsr fill_card_a	; Fill A sprite with card 0 data
@@ -310,7 +383,7 @@ skip_third_line
 	jsr print_card_a	; Print card 3
         			; Takes 8 scanlines
 
-	TIMER_SETUP 24
+	TIMER_SETUP 22
 
         lda #$03
         cmp underlineindex
@@ -410,7 +483,7 @@ skip_seventh_line
         
         jsr print_card_a
         
-        TIMER_SETUP 28	; 28 scanlines spacing
+        TIMER_SETUP 24	; 28 scanlines spacing
         
         lda #$07
         cmp underlineindex
@@ -618,7 +691,9 @@ cont6
 cont7
 
 	; SHIELD BLOCK
+        stx temp
         jsr count_card_usage
+        ldx temp
         
         lda cards,X
         and #$0F
@@ -744,7 +819,7 @@ cont11
         jmp card_pick_end_no_action
         
 monster_killed
-	
+	jsr count_card_usage
         lda #empty_card
         sta cards,Y
 
@@ -776,7 +851,6 @@ player_death
 potion_heal_from_sector_zero
 	lda #empty_card
         sta cards,X
-        jsr count_card_usage
         jmp potion_heal
 potion_heal_sector_one
 	lda #backpack_card
@@ -1066,6 +1140,20 @@ count_card_usage
 	ldx cardsinplay
         dex
         stx cardsinplay
+        lda cardsleft
+        and #$0F
+        cmp #$00
+        bne dec_cards_left
+        lda cardsleft
+        sec
+        sbc #$07 
+        sta cardsleft
+        rts
+        
+dec_cards_left
+	ldx cardsleft
+        dex 
+        stx cardsleft
         rts
 
 ; fillcard_a
@@ -1232,6 +1320,21 @@ m7_loop
 	adc #$07
         dey
         bne m7_loop
+        rts
+        
+; mult5
+; A = A * 5
+mult5
+	tay
+        lda #$00
+        cpy #$00
+        bne m5_loop
+        rts
+m5_loop
+	clc
+	adc #$05
+        dey
+        bne m5_loop
         rts
         
 ; fill_cards
@@ -1537,6 +1640,67 @@ icon_blank2
         .byte #%00000000
         .byte #%00000000
         .byte #%00000000
+        
+score_bitmap
+	.byte #%00000111
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000111
+     
+	.byte #%00000001
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000001
+        
+        .byte #%00000111
+        .byte #%00000100
+        .byte #%00000111
+        .byte #%00000001
+        .byte #%00000111
+        
+        .byte #%00000111
+        .byte #%00000001
+        .byte #%00000011
+        .byte #%00000001
+        .byte #%00000111
+        
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000111
+        .byte #%00000101
+        .byte #%00000101
+        
+        .byte #%00000111
+        .byte #%00000001
+        .byte #%00000111
+        .byte #%00000100
+        .byte #%00000111
+        
+        .byte #%00000111
+        .byte #%00000101
+        .byte #%00000111
+        .byte #%00000100
+        .byte #%00000100
+        
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000101
+        .byte #%00000111
+        
+        .byte #%00000111
+        .byte #%00000101
+        .byte #%00000111
+        .byte #%00000101
+        .byte #%00000111
+        
+        .byte #%00000001
+        .byte #%00000001
+        .byte #%00000111
+        .byte #%00000101
+        .byte #%00000111
         
 deck_start_layout
 	HEX 01 02 03 04 05 06 07 08 09
