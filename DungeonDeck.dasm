@@ -27,6 +27,9 @@ sheild_type	= $20
 enemy_type	= $30
 player_type 	= $40
 
+cards_left_color = $46
+score_color	= $a6
+
 ; Var
         seg.u variables
 	org $80
@@ -166,14 +169,19 @@ data_frame
         ldy #bg_color   ; load bg color
 	sty COLUBK	; set bg color
         
-        TIMER_SETUP 50
+        TIMER_SETUP 70
+        
+        lda #%00000010
+        sta CTRLPF
+        lda #cards_left_color
+        sta COLUP0	; set color for left
+        lda #score_color
+        sta COLUP1	; set color for right
+        
         
         TIMER_WAIT
         
-        TIMER_SETUP 142
-
-	lda #%00000010
-        sta CTRLPF
+        TIMER_SETUP 122
         
         lda cardsleft
         and #$0F
@@ -188,13 +196,13 @@ data_frame
 score_fill_loop
 	dex
         dey
-	lda score_bitmap,X
-	sta cardasprite,Y
+	lda score_bitmap_flipped,X
+	sta cardindxt,Y
         cpx temp
         bne score_fill_loop
         
         lda cardsleft
-        ;and #$F0
+        and #$F0
         lsr
         lsr
         lsr
@@ -212,13 +220,60 @@ score_fill_loop2
         dey
 	lda score_bitmap,X
         asl
-        asl
-        asl
-        asl
-        ora cardasprite,Y
+        ;asl
+        ;asl
+        ;asl
+        ;ora cardasprite,Y
 	sta cardasprite,Y
         cpx temp
         bne score_fill_loop2
+        
+       
+        lda score
+        and #$0F
+        jsr mult5
+        sta temp
+        
+        clc
+        adc #$05
+        tax
+
+	ldy #$05
+score_fill_loop3
+	dex
+        dey
+	lda score_bitmap,X
+	sta cardbsprite,Y
+        cpx temp
+        bne score_fill_loop3
+        
+        lda score
+        ;and #$F0
+        lsr
+        lsr
+        lsr
+        lsr
+        jsr mult5
+        sta temp
+        
+        clc
+        adc #$05
+        tax
+
+	ldy #$05
+score_fill_loop4
+	dex
+        dey
+	lda score_bitmap,X
+        asl
+        asl
+        asl
+        asl
+        ora cardbsprite,Y
+	sta cardbsprite,Y
+        cpx temp
+        bne score_fill_loop4
+
         
         ldx #$05
 score_loop
@@ -228,8 +283,14 @@ score_loop_small
         sta WSYNC
         lda cardasprite,X
         sta PF1
+        lda cardindxt,X
+        sta PF2
+        lda cardbsprite,X
+        SLEEP 16
+        sta PF1
         lda #$00
-        SLEEP 40
+        sta PF2
+        SLEEP 20
         sta PF1
         dey
         bne score_loop_small
@@ -736,7 +797,7 @@ card_pick_sector_one
         lda #$04
         cmp underlineindex
         bcc hand_card_swap ; Card placed back in sector one
-        
+        beq eat_item
         
         ldx flashindex
         lda cards,X
@@ -781,6 +842,19 @@ cont10
         sta cards,Y
         
         ;jmp replace_hand
+        jsr replace_hand_flash
+        jmp card_pick_end_no_action
+
+eat_item
+	ldx flashindex
+        lda cards,X
+        and #$0F
+        sta temp
+        lda score
+        clc
+        adc temp
+        sta score
+        
         jsr replace_hand_flash
         jmp card_pick_end_no_action
         
@@ -1698,6 +1772,67 @@ score_bitmap
         
         .byte #%00000001
         .byte #%00000001
+        .byte #%00000111
+        .byte #%00000101
+        .byte #%00000111
+        
+score_bitmap_flipped
+	.byte #%00000111
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000111
+     
+	.byte #%00000100
+        .byte #%00000100
+        .byte #%00000100
+        .byte #%00000100
+        .byte #%00000100
+        
+        .byte #%00000111
+        .byte #%00000001
+        .byte #%00000111
+        .byte #%00000100
+        .byte #%00000111
+        
+        .byte #%00000111
+        .byte #%00000001
+        .byte #%00000011
+        .byte #%00000001
+        .byte #%00000111
+        
+        .byte #%00000100
+        .byte #%00000100
+        .byte #%00000111
+        .byte #%00000101
+        .byte #%00000101
+        
+        .byte #%00000111
+        .byte #%00000100
+        .byte #%00000111
+        .byte #%00000001
+        .byte #%00000111
+        
+        .byte #%00000111
+        .byte #%00000101
+        .byte #%00000111
+        .byte #%00000100
+        .byte #%00000100
+        
+        .byte #%00000100
+        .byte #%00000100
+        .byte #%00000100
+        .byte #%00000101
+        .byte #%00000111
+        
+        .byte #%00000111
+        .byte #%00000101
+        .byte #%00000111
+        .byte #%00000101
+        .byte #%00000111
+        
+        .byte #%00000100
+        .byte #%00000100 
         .byte #%00000111
         .byte #%00000101
         .byte #%00000111
