@@ -151,6 +151,21 @@ new_frame
         lsr SWCHB	; test Game Reset switch
         bcc init	; reset?
         
+        ; Won game?
+        lda #$00
+        cmp cardsleft
+        bcc skip_win
+        lda #$aa
+        sta cardsleft
+        lda #$03
+        sta gamestate       
+skip_win
+        
+        ; Game ended?
+        lda #$02
+        cmp gamestate
+        bcc data_frame
+        
         ; Check tv type switch
         lda SWCHB
         and #%00001000
@@ -847,15 +862,29 @@ cont10
 
 eat_item
 	ldx flashindex
+        cpx #$04
+        beq end_eat_item
         lda cards,X
         and #$0F
         sta temp
         lda score
+        and #$0F
+        clc
+        adc temp
+        cmp #$0a
+        bcc score_no_tens_change
+        clc
+        adc #$06
+score_no_tens_change
+	sta temp
+        lda score
+        and #$F0
         clc
         adc temp
         sta score
         
         jsr replace_hand_flash
+end_eat_item
         jmp card_pick_end_no_action
         
 hand_card_swap
@@ -920,6 +949,8 @@ player_death
         sta cards+4
         lda #$03
         sta gamestate
+        lda #$aa
+        sta score
         jmp end_button
 
 potion_heal_from_sector_zero
@@ -1018,7 +1049,13 @@ replace_hand_flash
 	ldx flashindex
         cpx #$05
         beq replace_left_flash
+        cpx #$06
+        beq replace_right_flash
+     	lda #backpack_card
+        sta cards,X
         
+        jmp rh_end_flash
+replace_right_flash
         lda #right_hand_card
         sta cards,X
         
@@ -1211,6 +1248,7 @@ nr_loop_end
         
 ; count_card_usage
 count_card_usage
+	pha
 	ldx cardsinplay
         dex
         stx cardsinplay
@@ -1222,12 +1260,14 @@ count_card_usage
         sec
         sbc #$07 
         sta cardsleft
+        pla
         rts
         
 dec_cards_left
 	ldx cardsleft
         dex 
         stx cardsleft
+        pla
         rts
 
 ; fillcard_a
@@ -1776,6 +1816,12 @@ score_bitmap
         .byte #%00000101
         .byte #%00000111
         
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000010
+        .byte #%00000101
+        .byte #%00000101
+        
 score_bitmap_flipped
 	.byte #%00000111
         .byte #%00000101
@@ -1796,9 +1842,9 @@ score_bitmap_flipped
         .byte #%00000111
         
         .byte #%00000111
-        .byte #%00000001
-        .byte #%00000011
-        .byte #%00000001
+        .byte #%00000100
+        .byte #%00000110
+        .byte #%00000100
         .byte #%00000111
         
         .byte #%00000100
@@ -1836,6 +1882,12 @@ score_bitmap_flipped
         .byte #%00000111
         .byte #%00000101
         .byte #%00000111
+        
+        .byte #%00000101
+        .byte #%00000101
+        .byte #%00000010
+        .byte #%00000101
+        .byte #%00000101
         
 deck_start_layout
 	HEX 01 02 03 04 05 06 07 08 09
