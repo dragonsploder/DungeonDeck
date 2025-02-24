@@ -1,4 +1,4 @@
-; Boilerplate
+4; Boilerplate
 	processor 6502
         include "vcs.h"
         include "macro.h"
@@ -12,6 +12,8 @@ sprite_y 	= $40
 sprite_x 	= $52
 sprite 		= $14
 cards_len 	= $08
+
+num_game_modes	= $03
 
 deck_len	= 45
 deck_len_hex	= $45
@@ -28,7 +30,7 @@ enemy_type	= $30
 player_type 	= $40
 
 cards_left_color = $46
-score_color	= $a6
+score_color	 = $a6
 
 ; Var
         seg.u variables
@@ -41,7 +43,9 @@ buttonstate	byte
 joyupstate	byte
 joydownstate	byte
 switchrunstate  byte
+switchresetstate byte
 score		byte
+gamemode	byte
         
 ; Temporary storage
 temp		byte
@@ -87,6 +91,8 @@ init
         sta joydownstate
         sta switchrunstate
         sta score
+        sta gamemode
+        sta switchresetstate
         
         lda #$09
         sta flashindex
@@ -96,9 +102,6 @@ init
         sta seed
         lda #$01
         sta seed+1
-        
-        
-        
         
 title_screen
         VERTICAL_SYNC
@@ -159,7 +162,47 @@ title_loop
         sta PF1
         sta PF2
         
+        sta WSYNC
+        sta WSYNC
+        sta WSYNC
+        sta WSYNC
+        sta WSYNC
+        sta WSYNC    
         
+        
+        lda gamemode
+        jsr mult5
+        sta temp
+        clc
+        adc #$05
+        
+        ;ldx #$05
+        tax
+level_select_number
+	dex
+        ldy #$05
+level_select_number_small
+        sta WSYNC
+	lda score_bitmap,X
+        sta PF1
+        lda #$00
+        SLEEP 30
+        sta PF1
+        dey
+        bne level_select_number_small
+        
+        ;sta WSYNC
+        ;sta WSYNC
+        ;sta WSYNC
+        ;sta WSYNC
+        ;sta WSYNC
+        cpx temp
+        bne level_select_number
+        
+        lda #$00
+        sta PF1
+        
+  
         
         TIMER_WAIT
         
@@ -168,14 +211,54 @@ title_loop
         
         
 	TIMER_SETUP 30	; Vblank
+        
+        
+        ; Check Switches
+        lda SWCHB
+        and #%00000010
+        cmp #%00000010
+        beq skip_inc_game_mode
+        lda switchrunstate
+        beq skip_inc_game_mode2
+        lda #$00
+        sta switchrunstate
+        lda gamemode
+        clc
+        adc #$01
+        cmp #num_game_modes
+        bne store_gamemode
+        lda #$00
+store_gamemode
+        sta gamemode
+        jmp skip_inc_game_mode2
+skip_inc_game_mode
+	lda #01
+        sta switchrunstate
+skip_inc_game_mode2
+        
+        
+        lda SWCHB
+        and #$00000001
+        cmp #%00000001
+        beq no_reset
+        lda #$01
+        sta switchresetstate
+        jmp no_reset2
+no_reset
+	lda switchresetstate
+        cmp #$01
+        beq start_game
+no_reset2
+        
         TIMER_WAIT
         
         jmp title_screen
         
+start_game       
         
         
-        
-        
+        lda #$00
+        sta switchresetstate
         
         
         
@@ -234,8 +317,19 @@ title_loop
         sta underlineindex
 
 new_frame
-        lsr SWCHB	; test Game Reset switch
-        bcc jump_to_init	; reset?
+
+        lda SWCHB
+        and #$00000001
+        cmp #%00000001
+        beq no_reset3
+        lda #$01
+        sta switchresetstate
+        jmp no_reset4
+no_reset3
+	lda switchresetstate
+        cmp #$01
+        beq jump_to_init
+no_reset4
         jmp no_init
 jump_to_init
 	jmp init
@@ -1575,12 +1669,22 @@ fc_loop
 ; fill_deck
 ; Copy preset deck to memory
 fill_deck
-	ldx #deck_len
+	ldy gamemode
+        iny
+        lda #$00
+fd_setup
+	sta temp
+	clc
+	adc #deck_len
+        dey
+        bne fd_setup
+        
+        tax
 fd_loop
 	dex
 	lda deck_start_layout,x
         sta deck,x
-        cpx #$00
+        cpx temp
         bne fd_loop
         
         rts
@@ -2058,7 +2162,20 @@ title_screen_data
         .byte #%00000000
         
 deck_start_layout
+deck_easy
 	HEX 01 02 03 04 05 06 07 08 09
+        HEX 01 02 03 04 05 06 07 08 09
+        HEX 01 02 03 04 05 06 07 08 09
+        HEX 01 02 03 04 05 06 07 08 09
+        HEX 01 02 03 04 05 06 07 08 09
+deck_normal
+        HEX 11 12 13 14 15 16 17 18 19
+	HEX 11 12 13 14 15 16 17 18 19
+        HEX 11 12 13 14 15 16 17 18 19
+        HEX 11 12 13 14 15 16 17 18 19
+        HEX 11 12 13 14 15 16 17 18 19
+deck_hard        
+        HEX 01 02 03 04 05 06 07 08 09
         HEX 11 12 13 14 15 16 17 18 19
         HEX 21 22 23 24 25 26 27 28 29
         HEX 31 32 33 34 35 35 36 36 36
