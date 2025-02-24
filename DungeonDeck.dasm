@@ -252,6 +252,8 @@ no_reset2
         
         TIMER_WAIT
         
+        jsr rand
+        
         jmp title_screen
         
 start_game       
@@ -259,11 +261,6 @@ start_game
         
         lda #$00
         sta switchresetstate
-        
-        
-        
-        
-        
         
         
         jsr fill_deck
@@ -1680,10 +1677,12 @@ fd_setup
         bne fd_setup
         
         tax
+        ldy #deck_len
 fd_loop
 	dex
+        dey
 	lda deck_start_layout,x
-        sta deck,x
+        sta deck,y
         cpx temp
         bne fd_loop
         
