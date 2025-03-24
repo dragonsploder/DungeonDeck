@@ -2055,8 +2055,8 @@ score_bitmap_flipped
         .byte #%00000111
         .byte #%00000101
         .byte #%00000111
-        .byte #%00000100
-        .byte #%00000100
+        .byte #%00000001
+        .byte #%00000001
         
         .byte #%00000100
         .byte #%00000100
