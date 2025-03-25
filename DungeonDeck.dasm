@@ -15,10 +15,8 @@ cards_len 	= $08
 
 num_game_modes	= $06
 
-;deck_len	= 45
-deck_len	= 5
-;deck_len_hex	= $45
-deck_len_hex	= $05
+deck_len	= 45
+deck_len_hex	= $45
 true_empty_card	= $9B
 empty_card	= $8A
 left_hand_card	= $5A
@@ -1301,6 +1299,10 @@ no_push_button
         sta buttonstate
         
         ; Room Check (do it here for time)
+        lda cardsleft
+        cmp #$01
+        beq end_button
+        
         ldy #$00
        	ldx #$05
 rc_loop
@@ -1528,7 +1530,7 @@ put_cards_back
 pc_loop
        	dex 
         iny
-        cmp #(deck_len - 1)
+        cpy #deck_len
         bne pc_cont
         ldy #$00
 pc_cont
@@ -1548,7 +1550,7 @@ pc_cont
 
 ; new_room
 new_room
-	ldx #$05
+	ldx #$04
 nr_loop
 	dex
         
@@ -1556,15 +1558,21 @@ nr_loop
         cmp #empty_card
         bne nr_loop_end
         ldy deckindex
+        sty temp
 nr_loop_retry
         lda deck,Y
         cmp #$00
         bne nr_loop_cont
-        dey
+        cpy #$00
 	bne nr_loop_retry_skip
         ldy #deck_len
 nr_loop_retry_skip
+        dey
+	cpy temp
+        beq bail_search
         jmp nr_loop_retry
+bail_search
+	lda #empty_card
 
 nr_loop_cont
         sta cards,X
@@ -2342,7 +2350,7 @@ deck_normal
 deck_hard        
         HEX 01 02 03 04 05 06 07 08 09
         HEX 11 12 13 14 15 16 17 18 19
-        HEX 21 22 23 24 25 26 27 28 29
+        HEX 21 22 33 24 25 26 37 28 29
         HEX 31 32 33 34 35 35 36 36 36
         HEX 37 37 37 38 38 38 39 39 39
      
