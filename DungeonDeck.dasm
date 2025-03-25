@@ -15,8 +15,8 @@ cards_len 	= $08
 
 num_game_modes	= $06
 
-deck_len	= 45
-deck_len_hex	= $45
+deck_len	= 5
+deck_len_hex	= $5
 true_empty_card	= $9B
 empty_card	= $8A
 left_hand_card	= $5A
@@ -339,6 +339,12 @@ no_init
         bcc skip_win
         lda #$aa
         sta cardsleft
+        ldx gamemode
+        lda score
+        clc
+        adc score_bonus,X
+        sta score
+        
         lda #$03
         sta gamestate       
 skip_win
@@ -2353,7 +2359,9 @@ deck_hard
         HEX 21 22 33 24 25 26 37 28 29
         HEX 31 32 33 34 35 35 36 36 36
         HEX 37 37 37 38 38 38 39 39 39
-     
+
+score_bonus
+	HEX 00 20 45 30 60 80
      
 ; Vectors
 	org $FFFC
