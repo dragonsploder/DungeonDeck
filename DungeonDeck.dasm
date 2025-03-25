@@ -15,8 +15,8 @@ cards_len 	= $08
 
 num_game_modes	= $06
 
-deck_len	= 5
-deck_len_hex	= $5
+deck_len	= 45
+deck_len_hex	= $45
 true_empty_card	= $9B
 empty_card	= $8A
 left_hand_card	= $5A
