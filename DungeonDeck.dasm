@@ -1,4 +1,4 @@
-4; Boilerplate
+; Boilerplate
 	processor 6502
         include "vcs.h"
         include "macro.h"
@@ -13,10 +13,12 @@ sprite_x 	= $52
 sprite 		= $14
 cards_len 	= $08
 
-num_game_modes	= $03
+num_game_modes	= $06
 
-deck_len	= 45
-deck_len_hex	= $45
+;deck_len	= 45
+deck_len	= 5
+;deck_len_hex	= $45
+deck_len_hex	= $05
 true_empty_card	= $9B
 empty_card	= $8A
 left_hand_card	= $5A
@@ -46,6 +48,7 @@ switchrunstate  byte
 switchresetstate byte
 score		byte
 gamemode	byte
+turn_count	byte
         
 ; Temporary storage
 temp		byte
@@ -95,6 +98,9 @@ init
         sta switchresetstate
         
         lda #$09
+        sta turn_count
+        
+        lda #$10
         sta flashindex
   	
         ; Set seed
@@ -102,6 +108,7 @@ init
         sta seed
         lda #$01
         sta seed+1
+
         
 title_screen
         VERTICAL_SYNC
@@ -118,7 +125,7 @@ title_screen
         
         TIMER_WAIT
         
-        TIMER_SETUP 150
+        TIMER_SETUP 72
         
         
         ldx #$05	
@@ -162,19 +169,19 @@ title_loop
         sta PF1
         sta PF2
         
-        sta WSYNC
-        sta WSYNC
-        sta WSYNC
-        sta WSYNC
-        sta WSYNC
-        sta WSYNC    
+        TIMER_WAIT  
         
         
         lda gamemode
         jsr mult5
+        
         sta temp
+        
+        TIMER_SETUP 78
+        lda temp
         clc
         adc #$05
+        
         
         ;ldx #$05
         tax
@@ -191,11 +198,6 @@ level_select_number_small
         dey
         bne level_select_number_small
         
-        ;sta WSYNC
-        ;sta WSYNC
-        ;sta WSYNC
-        ;sta WSYNC
-        ;sta WSYNC
         cpx temp
         bne level_select_number
         
@@ -313,6 +315,7 @@ start_game
         lda #$03
         sta underlineindex
 
+
 new_frame
 
         lda SWCHB
@@ -341,7 +344,7 @@ no_init
         lda #$03
         sta gamestate       
 skip_win
-        
+
         ; Game ended?
         lda #$02
         cmp gamestate
@@ -531,6 +534,48 @@ normal_frame
         sta WSYNC
         sta HMOVE
         
+        lda #%00000001
+        sta CTRLPF
+        
+        
+        lda #$02
+        cmp gamemode
+        bcc no_timer_skip
+	lda #$F0
+        sta turn_count
+	lda #bg_color
+        sta COLUPF
+        jmp time_end
+no_timer_skip
+
+        lda turn_count
+        cmp #$05
+        bcc high_time_skip
+        lda #$C4
+        sta COLUPF
+        jmp time_end
+high_time_skip
+	cmp #$03
+        bcc mid_time_skip
+        lda #$16
+        sta COLUPF
+        jmp time_end
+mid_time_skip
+	lda #$40
+        sta COLUPF
+time_end
+
+        
+        lda #$00
+        
+        sta PF1
+        lda turn_count
+        cmp #$09
+        bcc timer0_skip
+        lda #%01100000
+        sta PF1
+timer0_skip
+        
         
       	TIMER_WAIT	; End Vblank
         
@@ -548,10 +593,24 @@ normal_frame
         lda #$00
         jsr fill_card_a	; Fill A sprite with card 0 data
         
+        lda turn_count
+        cmp #$08
+        bcc timer1_skip
+        lda #%01100000
+        sta PF1
+timer1_skip
+        
         TIMER_WAIT	; End 20 scanlines
         
 	jsr print_card_a	; Print card 0
         			; Takes 8 scanlines
+                                
+        lda turn_count
+        cmp #$07
+        bcc timer2_skip
+        lda #%01100000
+        sta PF1
+timer2_skip
           
         TIMER_SETUP 21
         
@@ -588,6 +647,13 @@ skip_first_line
         
 	jsr print_card_ab	; Printcard 1&2
         			; Takes 8 scanlines
+        
+        lda turn_count
+        cmp #$06
+        bcc timer3_skip
+        lda #%01100000
+        sta PF1
+timer3_skip
        	
         TIMER_SETUP 20
         
@@ -639,6 +705,13 @@ skip_third_line
         
 	jsr print_card_a	; Print card 3
         			; Takes 8 scanlines
+                                
+        lda turn_count
+        cmp #$05
+        bcc timer4_skip
+        lda #%01100000
+        sta PF1
+timer4_skip
 
 	TIMER_SETUP 22
 
@@ -659,7 +732,13 @@ skip_fourth_line
 	jsr print_card_a	; Print card 4
         			; Takes 8 scanlines
         
-        
+        lda turn_count
+        cmp #$04
+        bcc timer5_skip
+        lda #%01100000
+        sta PF1
+timer5_skip
+
         TIMER_SETUP 21 	; 20 scanlines spacing
         
         lda #$04
@@ -691,6 +770,13 @@ skip_fifth_line
         TIMER_WAIT	; End 14 scanlines
         
 	jsr print_card_ab	; Print card 5&6
+        
+        lda turn_count
+        cmp #$03
+        bcc timer6_skip
+        lda #%01100000
+        sta PF1
+timer6_skip
         
         TIMER_SETUP 20	; 20 scanlines spacing
         
@@ -740,7 +826,14 @@ skip_seventh_line
         
         jsr print_card_a
         
-        TIMER_SETUP 24	; 28 scanlines spacing
+        lda turn_count
+        cmp #$02
+        bcc timer7_skip
+        lda #%01100000
+        sta PF1
+timer7_skip
+        
+        TIMER_SETUP 18	; 28 scanlines spacing
         
         lda #$07
         cmp underlineindex
@@ -753,6 +846,17 @@ skip_eigth_line
 	jsr do_joystick ; Do joystick stuff up here for time
 
         TIMER_WAIT	; End 28 scanlines
+        
+        TIMER_SETUP 6
+        
+        lda turn_count
+        cmp #$01
+        bcc timer8_skip
+        lda #%01100000
+        sta PF1
+timer8_skip
+        
+        TIMER_WAIT
 
 	
 	lda #2		
@@ -799,6 +903,8 @@ cont0
         jsr put_cards_back
         jsr new_room
         
+        lda #$09
+        sta turn_count
         
         lda #$01
         sta switchrunstate
@@ -1193,6 +1299,7 @@ card_pick_end_no_action
 no_push_button
 	lda #$00
         sta buttonstate
+        
         ; Room Check (do it here for time)
         ldy #$00
        	ldx #$05
@@ -1209,6 +1316,8 @@ rc_loop_end
         
         cpy #$03
         bne end_button
+        lda #$09
+        sta turn_count
         jsr new_room
         
 end_button
@@ -1218,6 +1327,56 @@ end_button
         clc 
         adc #$01
         sta framecounter
+        
+        cmp #$00
+        bne skip_turn_inc
+        lda turn_count
+        sec
+        sbc #$01
+        sta turn_count
+skip_turn_inc
+
+        cmp #$40
+        bne skip_turn_inc2
+        lda turn_count
+        sec
+        sbc #$01
+        sta turn_count
+skip_turn_inc2
+
+        cmp #$80
+        bne skip_turn_inc3
+        lda turn_count
+        sec
+        sbc #$01
+        sta turn_count
+skip_turn_inc3
+
+        cmp #$c0
+        bne skip_turn_inc4
+        lda turn_count
+        sec
+        sbc #$01
+        sta turn_count
+skip_turn_inc4
+
+	lda turn_count
+        cmp #$00
+        bne skip_update_turn_count
+        lda #$09
+        sta turn_count
+        
+        lda cards+4
+        and #$0F
+        sec
+        sbc #$01
+        cmp #$00
+        bne skip_death
+        jmp player_death
+skip_death
+        ora #player_type
+        sta cards+4
+skip_update_turn_count
 	
         
         TIMER_WAIT	; End Vblank
@@ -1667,6 +1826,13 @@ fc_loop
 ; Copy preset deck to memory
 fill_deck
 	ldy gamemode
+        cpy #$03
+        bcc sub_skip
+        lda gamemode
+       	sec
+        sbc #$03
+        tay
+sub_skip
         iny
         lda #$00
 fd_setup
@@ -2174,9 +2340,9 @@ deck_normal
         HEX 31 32 33 34 35 35 36 36 36
         HEX 37 37 37 38 38 38 39 39 39
 deck_hard        
-        HEX 01 32 03 04 05 36 07 38 09
-        HEX 11 32 13 14 15 36 17 38 19
-        HEX 21 32 23 24 25 36 27 38 29
+        HEX 01 02 03 04 05 06 07 08 09
+        HEX 11 12 13 14 15 16 17 18 19
+        HEX 21 22 23 24 25 26 27 28 29
         HEX 31 32 33 34 35 35 36 36 36
         HEX 37 37 37 38 38 38 39 39 39
      
